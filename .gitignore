@@ -40,6 +40,9 @@ env/
 *.h5
 *.hdf5
 
+# But include example data
+!examples/*.csv
+
 # Output directories
 out/
 out_*/
@@ -48,6 +51,9 @@ viz/
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# But include example notebooks
+!examples/*.ipynb
 
 # OS
 .DS_Store

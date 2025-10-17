@@ -6,14 +6,12 @@ import networkx as nx
 
 
 def load_graph(outdir: str) -> Tuple[pd.DataFrame, pd.DataFrame, nx.Graph]:
-    nodes_p = os.path.join(outdir, "nodes.parquet")
-    edges_p = os.path.join(outdir, "edges.parquet")
+    nodes_p = os.path.join(outdir, "nodes.csv")
+    edges_p = os.path.join(outdir, "edges.csv")
     if not (os.path.exists(nodes_p) and os.path.exists(edges_p)):
-        # fallback to CSV
-        nodes_p = os.path.join(outdir, "nodes.csv")
-        edges_p = os.path.join(outdir, "edges.csv")
-    nodes = pd.read_parquet(nodes_p) if nodes_p.endswith(".parquet") else pd.read_csv(nodes_p)
-    edges = pd.read_parquet(edges_p) if edges_p.endswith(".parquet") else pd.read_csv(edges_p)
+        raise FileNotFoundError(f"Expected nodes.csv and edges.csv in {outdir}")
+    nodes = pd.read_csv(nodes_p)
+    edges = pd.read_csv(edges_p)
     # Build graph
     G = nx.Graph()
     for r in nodes.itertuples(index=False):

@@ -1,3 +1,30 @@
+from __future__ import annotations
+
+import numpy as np
+from collections import Counter
+from typing import Dict, Iterable, List, Tuple
+from scipy import sparse
+import multiprocessing as mp
+
+
+def _doc_pairs_worker(args):
+    doc, vocab, window = args
+    ids = [vocab[t] for t in doc if t in vocab]
+    n = len(ids)
+    pairs = []
+    for i, wi in enumerate(ids):
+        left = max(0, i - window)
+        right = min(n, i + window + 1)
+        for j in range(left, right):
+            if j == i:
+                continue
+            wj = ids[j]
+            if wj == wi:
+                continue
+            a, b = (wi, wj) if wi < wj else (wj, wi)
+            pairs.append((a, b))
+    return pairs, ids
+
 def compute_ppmi_gpu(coo, token_counts, total_tokens, cds=0.75, eps=1e-12):
     import cupy as cp
     sm_counts = cp.power(token_counts, cds)
@@ -15,16 +42,6 @@ def compute_ppmi_gpu(coo, token_counts, total_tokens, cds=0.75, eps=1e-12):
     data = cp.array(data, dtype=cp.float32)
     data[data < 0] = 0.0
     return type(coo)((data, (coo.row, coo.col)), shape=coo.shape)
-from __future__ import annotations
-
-def build_vocab(tokenized_docs: Iterable[List[str]], min_df: int = 5, max_vocab: int | None = None) -> Dict[str, int]:
-
-import numpy as np
-from collections import Counter, defaultdict
-from math import log
-from typing import Dict, Iterable, List, Tuple
-from scipy import sparse
-import multiprocessing as mp
 
 def build_vocab(tokenized_docs: Iterable[List[str]], min_df: int = 5, max_vocab: int | None = None) -> Dict[str, int]:
     df = Counter()
@@ -47,26 +64,9 @@ def cooccurrence(
     Returns: (coo_matrix, token_counts, total_tokens)
     """
     vocab_size = len(vocab)
-    # Multiprocessing for large docs
-    def doc_pairs(doc):
-        ids = [vocab[t] for t in doc if t in vocab]
-        n = len(ids)
-        pairs = []
-        for i, wi in enumerate(ids):
-            left = max(0, i - window)
-            right = min(n, i + window + 1)
-            for j in range(left, right):
-                if j == i:
-                    continue
-                wj = ids[j]
-                if wj == wi:
-                    continue
-                a, b = (wi, wj) if wi < wj else (wj, wi)
-                pairs.append((a, b))
-        return pairs, ids
-
+    # Multiprocessing for large docs using top-level worker to avoid pickling issues
     with mp.Pool(mp.cpu_count()) as pool:
-        results = pool.map(doc_pairs, tokenized_docs)
+        results = pool.map(_doc_pairs_worker, ((doc, vocab, window) for doc in tokenized_docs))
 
     pair_counts = Counter()
     token_counts = np.zeros(vocab_size, dtype=np.int64)

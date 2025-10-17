@@ -8,7 +8,7 @@ from .visualize import load_graph, plot_top_terms, plot_top_edges, get_ego_subgr
 
 def main():
     ap = argparse.ArgumentParser(description="Visualize semantic network outputs")
-    ap.add_argument("--outdir", required=True, help="Directory containing nodes/edges parquet or csv")
+    ap.add_argument("--outdir", required=True, help="Directory containing nodes/edges CSV")
     ap.add_argument("--topn", type=int, default=25, help="Top-N terms and edges to plot")
     ap.add_argument("--ego-token", type=str, default=None, help="Token for ego-network visualization")
     ap.add_argument("--ego-k", type=int, default=20, help="Number of neighbors for ego-network")

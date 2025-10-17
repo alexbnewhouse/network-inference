@@ -1,6 +1,3 @@
-def sparsify_topk(ppmi: Dict[Tuple[int, int], float], topk: int) -> Dict[Tuple[int, int], float]:
-
-from collections import defaultdict
 from typing import Dict, List, Tuple
 import numpy as np
 

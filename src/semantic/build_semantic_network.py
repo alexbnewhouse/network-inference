@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 import polars as pl
@@ -10,15 +10,10 @@ from tqdm import tqdm
 import multiprocessing as mp
 from scipy import sparse
 
-# Support running as module or script
-try:
-    from .preprocess import tokenize
-    from .cooccur import build_vocab, cooccurrence, compute_ppmi
-    from .graph_build import sparsify_topk, to_networkx
-except ImportError:  # pragma: no cover
-    from preprocess import tokenize
-    from cooccur import build_vocab, cooccurrence, compute_ppmi
-    from graph_build import sparsify_topk, to_networkx
+# Support running as module
+from .preprocess import tokenize
+from .cooccur import build_vocab, cooccurrence, compute_ppmi
+from .graph_build import sparsify_topk_sparse, to_networkx_sparse, to_igraph_sparse
 
 
 def read_dataset(path: str, max_rows: int | None = None) -> pd.DataFrame:
@@ -97,6 +92,96 @@ def recompute_df(docs: List[List[str]], vocab: dict[str, int]) -> pd.DataFrame:
     return pd.DataFrame(items).sort_values("doc_freq", ascending=False).reset_index(drop=True)
 
 
+def build_semantic_from_df(
+    df: pd.DataFrame,
+    outdir: str,
+    *,
+    min_df: int = 5,
+    max_vocab: Optional[int] = None,
+    window: int = 10,
+    topk: int = 20,
+    cds: float = 0.75,
+    use_gpu: bool = False,
+    use_igraph: bool = False,
+    spacy_gpu: bool = False,
+):
+    """Build semantic network from a dataframe and write CSV outputs to outdir.
+
+    Writes:
+      - nodes.csv (id, token, doc_freq, term_freq)
+      - edges.csv (src, dst, weight)
+      - graph.graphml (optional)
+    """
+    os.makedirs(outdir, exist_ok=True)
+
+    # Set env var for spaCy GPU
+    if spacy_gpu:
+        os.environ["SPACY_GPU"] = "1"
+
+    docs = build_docs(df)
+
+    vocab = build_vocab(docs, min_df=min_df, max_vocab=max_vocab)
+    id2tok: List[str] = [""] * len(vocab)
+    for t, i in vocab.items():
+        id2tok[i] = t
+
+    from .graph_build import sparsify_topk_sparse, to_networkx_sparse, to_igraph_sparse
+    # Use CuPy for matrix ops if requested and available
+    try:
+        if use_gpu:
+            import cupy as cp
+            import cupyx.scipy.sparse as cupy_sparse
+            print("Using CuPy for matrix ops.")
+            # co-occurrence on CPU for now
+            coo, token_counts, total_tokens = cooccurrence(docs, vocab, window=window)
+            coo_gpu = cupy_sparse.coo_matrix((cp.array(coo.data), (cp.array(coo.row), cp.array(coo.col))), shape=coo.shape)
+            token_counts_gpu = cp.array(token_counts)
+            from .cooccur import compute_ppmi_gpu
+            ppmi = compute_ppmi_gpu(coo_gpu, token_counts_gpu, total_tokens, cds=cds)
+            ppmi = ppmi.get()
+        else:
+            coo, token_counts, total_tokens = cooccurrence(docs, vocab, window=window)
+            ppmi = compute_ppmi(coo, token_counts, total_tokens, cds=cds)
+    except ImportError:
+        coo, token_counts, total_tokens = cooccurrence(docs, vocab, window=window)
+        ppmi = compute_ppmi(coo, token_counts, total_tokens, cds=cds)
+
+    if topk and topk > 0:
+        ppmi = sparsify_topk_sparse(ppmi, topk=topk)
+
+    # Save nodes and edges as CSV
+    nodes_df = recompute_df(docs, vocab)
+    coo_ppmi = ppmi.tocoo()
+    edges_df = pd.DataFrame({
+        "src": coo_ppmi.row,
+        "dst": coo_ppmi.col,
+        "weight": coo_ppmi.data
+    })
+    edges_df = edges_df[edges_df["weight"] > 0]
+    if not edges_df.empty:
+        edges_df = edges_df.sort_values("weight", ascending=False).reset_index(drop=True)
+
+    nodes_path = os.path.join(outdir, "nodes.csv")
+    edges_path = os.path.join(outdir, "edges.csv")
+    nodes_df.to_csv(nodes_path, index=False)
+    edges_df.to_csv(edges_path, index=False)
+
+    # Save graph
+    try:
+        if use_igraph:
+            G = to_igraph_sparse(ppmi, id2tok)
+            G.write_graphml(os.path.join(outdir, "graph_igraph.graphml"))
+        else:
+            import networkx as nx
+            G = to_networkx_sparse(ppmi, id2tok)
+            nx.write_graphml(G, os.path.join(outdir, "graph.graphml"))
+    except Exception:
+        pass
+
+    print(f"Saved nodes to {nodes_path}")
+    print(f"Saved edges to {edges_path}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Build a PPMI-weighted semantic co-occurrence network from CSV (scalable, GPU-ready)")
     ap.add_argument("--input", required=True, help="Path to CSV file with 'text' and optional 'subject'")
@@ -113,106 +198,22 @@ def main():
     ap.add_argument("--gpu", action="store_true", help="Use CuPy for matrix ops (requires CUDA)")
     args = ap.parse_args()
 
-    # Set env var for spaCy GPU
-    if args.spacy_gpu:
-        import os
-        os.environ["SPACY_GPU"] = "1"
-
     os.makedirs(args.outdir, exist_ok=True)
 
-    # Chunked reading for very large files (if max_rows not set)
-    if args.max_rows is None:
-        # Use Polars scan_csv for streaming if available
-        try:
-            scan = pl.scan_csv(args.input, null_values=["NA", "NaN", "None"])
-            # Only select needed columns
-            scan = scan.select([pl.col("text"), pl.col("subject")])
-            # Collect in batches
-            batch_size = 100_000
-            docs = []
-            nrows = 0
-            for df in scan.iter_batches(batch_size=batch_size):
-                pdf = df.collect().to_pandas()
-                docs.extend(build_docs(pdf))
-                nrows += len(pdf)
-                print(f"Processed {nrows} rows...")
-        except Exception:
-            # Fallback to pandas full read
-            df = read_dataset(args.input, max_rows=args.max_rows)
-            docs = build_docs(df)
-    else:
-        df = read_dataset(args.input, max_rows=args.max_rows)
-        docs = build_docs(df)
-
-    vocab = build_vocab(docs, min_df=args.min_df, max_vocab=args.max_vocab)
-    id2tok: List[str] = [""] * len(vocab)
-    for t, i in vocab.items():
-        id2tok[i] = t
-
-    from .graph_build import sparsify_topk_sparse, to_networkx_sparse, to_igraph_sparse
-    # Use CuPy for matrix ops if requested and available
-    use_gpu = args.gpu
-    try:
-        if use_gpu:
-            import cupy as cp
-            import cupyx.scipy.sparse as cupy_sparse
-            print("Using CuPy for matrix ops.")
-            # TODO: implement GPU cooccurrence/PPMI if needed
-            # For now, fallback to CPU for cooccurrence, but use CuPy for PPMI
-            coo, token_counts, total_tokens = cooccurrence(docs, vocab, window=args.window)
-            # Convert to CuPy sparse
-            coo_gpu = cupy_sparse.coo_matrix((cp.array(coo.data), (cp.array(coo.row), cp.array(coo.col))), shape=coo.shape)
-            token_counts_gpu = cp.array(token_counts)
-            from .cooccur import compute_ppmi_gpu
-            ppmi = compute_ppmi_gpu(coo_gpu, token_counts_gpu, total_tokens, cds=args.cds)
-            # Move back to CPU for output
-            ppmi = ppmi.get()
-        else:
-            coo, token_counts, total_tokens = cooccurrence(docs, vocab, window=args.window)
-            ppmi = compute_ppmi(coo, token_counts, total_tokens, cds=args.cds)
-    except ImportError:
-        coo, token_counts, total_tokens = cooccurrence(docs, vocab, window=args.window)
-        ppmi = compute_ppmi(coo, token_counts, total_tokens, cds=args.cds)
-    if args.topk and args.topk > 0:
-        ppmi = sparsify_topk_sparse(ppmi, topk=args.topk)
-
-    # Save nodes and edges as Parquet (sparse)
-    nodes_df = recompute_df(docs, vocab)
-    coo_ppmi = ppmi.tocoo()
-    edges_df = pd.DataFrame({
-        "src": coo_ppmi.row,
-        "dst": coo_ppmi.col,
-        "weight": coo_ppmi.data
-    })
-    edges_df = edges_df[edges_df["weight"] > 0]
-    if not edges_df.empty:
-        edges_df = edges_df.sort_values("weight", ascending=False).reset_index(drop=True)
-
-    nodes_path = os.path.join(args.outdir, "nodes.parquet")
-    edges_path = os.path.join(args.outdir, "edges.parquet")
-    try:
-        nodes_df.to_parquet(nodes_path, index=False)
-        edges_df.to_parquet(edges_path, index=False)
-    except Exception as e:
-        nodes_path = os.path.join(args.outdir, "nodes.csv")
-        edges_path = os.path.join(args.outdir, "edges.csv")
-        nodes_df.to_csv(nodes_path, index=False)
-        edges_df.to_csv(edges_path, index=False)
-
-    # Save graph
-    try:
-        if args.igraph:
-            G = to_igraph_sparse(ppmi, id2tok)
-            G.write_graphml(os.path.join(args.outdir, "graph_igraph.graphml"))
-        else:
-            import networkx as nx
-            G = to_networkx_sparse(ppmi, id2tok)
-            nx.write_graphml(G, os.path.join(args.outdir, "graph.graphml"))
-    except Exception:
-        pass
-
-    print(f"Saved nodes to {nodes_path}")
-    print(f"Saved edges to {edges_path}")
+    # Simple path: read input once and build
+    df = read_dataset(args.input, max_rows=args.max_rows)
+    build_semantic_from_df(
+        df,
+        args.outdir,
+        min_df=args.min_df,
+        max_vocab=args.max_vocab,
+        window=args.window,
+        topk=args.topk,
+        cds=args.cds,
+        use_gpu=args.gpu,
+        use_igraph=args.igraph,
+        spacy_gpu=args.spacy_gpu,
+    )
 
 
 if __name__ == "__main__":

@@ -16,4 +16,11 @@ def test_pipeline_tiny(tmp_path):
     pairs, counts, total = cooccurrence(docs, vocab, window=2)
     ppmi = compute_ppmi(pairs, counts, total)
     assert len(vocab) >= 2
-    assert any(weight > 0 for weight in ppmi.values())
+    # Accept both dict-like and sparse matrix outputs for ppmi
+    if hasattr(ppmi, "values"):
+        vals = ppmi.values()
+    elif hasattr(ppmi, "data"):
+        vals = ppmi.data
+    else:
+        vals = []
+    assert any(weight > 0 for weight in vals)

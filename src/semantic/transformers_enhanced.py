@@ -41,6 +41,8 @@ class TransformerEmbeddings:
         Returns:
             numpy array of shape (n_texts, embedding_dim)
         """
+        if not texts:
+            raise ValueError("Input list is empty")
         return self.model.encode(
             texts,
             batch_size=batch_size,
@@ -48,17 +50,25 @@ class TransformerEmbeddings:
             convert_to_numpy=True
         )
     
-    def compute_similarity_matrix(self, embeddings: np.ndarray) -> np.ndarray:
+    def compute_similarity_matrix(self, embeddings_or_texts) -> np.ndarray:
         """
         Compute pairwise cosine similarity matrix.
         
         Args:
-            embeddings: Embedding matrix (n_samples, embedding_dim)
+            embeddings_or_texts: Either embedding matrix (n_samples, embedding_dim) 
+                                or list of text strings to encode first
             
         Returns:
             Similarity matrix (n_samples, n_samples)
         """
         from sklearn.metrics.pairwise import cosine_similarity
+        
+        # If input is a list of strings, encode them first
+        if isinstance(embeddings_or_texts, (list, tuple)):
+            embeddings = self.encode(embeddings_or_texts, show_progress=False)
+        else:
+            embeddings = embeddings_or_texts
+            
         return cosine_similarity(embeddings)
 
 
@@ -137,8 +147,14 @@ class TransformerSemanticNetwork:
             top_k: Keep only top-k most similar documents per document
             
         Returns:
-            DataFrame with columns: src, dst, weight
+            DataFrame with columns: source, target, similarity
         """
+        # Handle empty or single document
+        if len(texts) == 0:
+            return pd.DataFrame(columns=['source', 'target', 'similarity'])
+        if len(texts) == 1:
+            return pd.DataFrame(columns=['source', 'target', 'similarity'])
+            
         print("Encoding documents...")
         embeddings = self.embedder.encode(texts, show_progress=True)
         
@@ -160,9 +176,9 @@ class TransformerSemanticNetwork:
             for j in candidates:
                 if i != j and similarities[j] >= similarity_threshold:
                     edges.append({
-                        "src": i,
-                        "dst": j,
-                        "weight": float(similarities[j])
+                        "source": i,
+                        "target": j,
+                        "similarity": float(similarities[j])
                     })
                     
         return pd.DataFrame(edges)
@@ -182,8 +198,14 @@ class TransformerSemanticNetwork:
             top_k: Keep only top-k most similar terms per term
             
         Returns:
-            DataFrame with columns: src, dst, weight
+            DataFrame with columns: source, target, similarity
         """
+        # Handle empty or single term
+        if len(terms) == 0:
+            return pd.DataFrame(columns=['source', 'target', 'similarity'])
+        if len(terms) == 1:
+            return pd.DataFrame(columns=['source', 'target', 'similarity'])
+            
         print("Encoding terms...")
         embeddings = self.embedder.encode(terms, show_progress=True)
         
@@ -201,9 +223,9 @@ class TransformerSemanticNetwork:
             for j in candidates:
                 if similarities[j] >= similarity_threshold:
                     edges.append({
-                        "src": i,
-                        "dst": j,
-                        "weight": float(similarities[j])
+                        "source": terms[i],  # Use actual term names
+                        "target": terms[j],
+                        "similarity": float(similarities[j])
                     })
                     
         return pd.DataFrame(edges)
@@ -230,26 +252,31 @@ class TransformerNER:
             subprocess.run(["python", "-m", "spacy", "download", model_name])
             self.nlp = spacy.load(model_name)
             
-    def extract_entities(self, texts: List[str], batch_size: int = 64) -> List[List[Tuple[str, str, int, int]]]:
+    def extract_entities(self, text: str) -> pd.DataFrame:
         """
-        Extract entities from texts using transformer model.
+        Extract entities from text using transformer model.
         
         Args:
-            texts: List of texts
-            batch_size: Batch size for processing
+            text: Input text string
             
         Returns:
-            List of entity lists, each containing (text, label, start, end) tuples
+            DataFrame with columns: text, label, start, end
         """
-        docs = list(tqdm(
-            self.nlp.pipe(texts, batch_size=batch_size),
-            total=len(texts),
-            desc="Extracting entities"
-        ))
+        if not text:
+            return pd.DataFrame(columns=['text', 'label', 'start', 'end'])
+            
+        doc = self.nlp(text)
+        
+        if not doc.ents:
+            return pd.DataFrame(columns=['text', 'label', 'start', 'end'])
         
         entities = []
-        for doc in docs:
-            doc_ents = [(ent.text, ent.label_, ent.start_char, ent.end_char) for ent in doc.ents]
-            entities.append(doc_ents)
+        for ent in doc.ents:
+            entities.append({
+                'text': ent.text,
+                'label': ent.label_,
+                'start': ent.start_char,
+                'end': ent.end_char
+            })
             
-        return entities
+        return pd.DataFrame(entities)

@@ -112,9 +112,9 @@ class TestTransformerSemanticNetwork(unittest.TestCase):
             top_k=5
         )
         self.assertIsInstance(edges, pd.DataFrame)
-        self.assertIn('src', edges.columns)
-        self.assertIn('dst', edges.columns)
-        self.assertIn('weight', edges.columns)
+        self.assertIn('source', edges.columns)
+        self.assertIn('target', edges.columns)
+        self.assertIn('similarity', edges.columns)
     
     def test_build_document_network_threshold(self):
         """Test that threshold parameter works."""
@@ -139,7 +139,7 @@ class TestTransformerSemanticNetwork(unittest.TestCase):
             top_k=10
         )
         # No edge should connect a node to itself
-        self.assertTrue(all(edges['src'] != edges['dst']))
+        self.assertTrue(all(edges['source'] != edges['target']))
     
     def test_build_term_network(self):
         """Test term network creation."""

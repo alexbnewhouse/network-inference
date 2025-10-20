@@ -52,24 +52,41 @@ class TransformerEmbeddings:
     
     def compute_similarity_matrix(self, embeddings_or_texts) -> np.ndarray:
         """
-        Compute pairwise cosine similarity matrix.
-        
+        Compute pairwise cosine similarity matrix in [0, 1].
+
         Args:
-            embeddings_or_texts: Either embedding matrix (n_samples, embedding_dim) 
-                                or list of text strings to encode first
-            
+            embeddings_or_texts: Either embedding matrix (n_samples, embedding_dim)
+                                 or list/tuple of text strings to encode first
+
         Returns:
-            Similarity matrix (n_samples, n_samples)
+            Similarity matrix (n_samples, n_samples) with values in [0, 1]
         """
-        from sklearn.metrics.pairwise import cosine_similarity
-        
-        # If input is a list of strings, encode them first
+        # If input is a list/tuple of strings, encode them first
         if isinstance(embeddings_or_texts, (list, tuple)):
-            embeddings = self.encode(embeddings_or_texts, show_progress=False)
+            embeddings = self.encode(list(embeddings_or_texts), show_progress=False)
         else:
             embeddings = embeddings_or_texts
-            
-        return cosine_similarity(embeddings)
+
+        # Normalize embeddings to unit norm to compute cosine similarity via dot product
+        # Add small epsilon to avoid division by zero in unlikely degenerate cases
+        eps = 1e-12
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        norms = np.maximum(norms, eps)
+        emb_norm = embeddings / norms
+
+        # Cosine similarity in [-1, 1]
+        sim = emb_norm @ emb_norm.T
+
+        # Numerical stability: clip slight overshoots to [-1, 1]
+        sim = np.clip(sim, -1.0, 1.0)
+
+        # Map to [0, 1] as required by tests and downstream expectations
+        sim01 = (sim + 1.0) / 2.0
+
+        # Final safety clip to [0, 1]
+        sim01 = np.clip(sim01, 0.0, 1.0)
+
+        return sim01
 
 
 class BERTopicClustering:

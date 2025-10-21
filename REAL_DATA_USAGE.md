@@ -48,14 +48,14 @@ python3 -m src.semantic.transformers_cli \
     --outdir out/pol_transformer \
     --text-col body \
     --mode document \
-    --threshold 0.3 \
+    --similarity-threshold 0.3 \
     --max-rows 1000
 ```
 
 **Parameters:**
 - `--text-col body`: Use the 'body' column for text
 - `--mode document`: Build document-to-document similarity network
-- `--threshold 0.3`: Keep edges with cosine similarity > 0.3
+- `--similarity-threshold 0.3`: Keep edges with cosine similarity > 0.3
 - `--max-rows 1000`: Process first 1k rows (transformers are slower)
 
 **Output:**
@@ -69,7 +69,7 @@ python3 -m src.semantic.transformers_cli \
     --outdir out/pol_transformer_terms \
     --text-col body \
     --mode term \
-    --threshold 0.5 \
+    --similarity-threshold 0.5 \
     --max-rows 5000
 ```
 
@@ -138,15 +138,12 @@ Analyze how the network evolves over time:
 python3 -m src.semantic.time_slice_cli \
     --input pol_archive_0.csv \
     --outdir out/pol_timeslices \
-    --text-col body \
-    --time-col created_at \
-    --freq M \
-    --window 5 \
-    --min-df 5
+    --slice-col created_at \
+    --freq M
 ```
 
 **Parameters:**
-- `--time-col created_at`: Use timestamp column
+- `--slice-col created_at`: Use timestamp column for time slicing
 - `--freq M`: Monthly slices (D=daily, W=weekly, Y=yearly)
 
 ## Validation
@@ -162,14 +159,13 @@ All pipelines have been tested and verified with `pol_archive_0.csv`:
 1. **Visualize networks:**
    ```bash
    python3 -m src.semantic.visualize_cli \
-       --nodes out/pol_cooccur/nodes.csv \
-       --edges out/pol_cooccur/edges.csv \
        --outdir out/pol_cooccur
    ```
 
 2. **Community detection:**
    ```bash
    python3 -m src.semantic.community_cli \
+       --nodes out/pol_cooccur/nodes.csv \
        --edges out/pol_cooccur/edges.csv \
        --outdir out/pol_cooccur
    ```

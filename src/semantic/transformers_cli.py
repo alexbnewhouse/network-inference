@@ -1,5 +1,26 @@
 """
-CLI for transformer-enhanced semantic network building.
+Transformer Semantic Network CLI
+===============================
+
+Build semantic networks using transformer embeddings (document or term level).
+
+Example usage:
+    python -m src.semantic.transformers_cli --input data.csv --outdir output/ --model sentence-transformers/all-MiniLM-L6-v2 --mode document
+
+Arguments:
+    --input      Input CSV file containing text data
+    --outdir     Output directory
+    --model      Sentence transformer model name (default: all-MiniLM-L6-v2)
+    --similarity-threshold Minimum similarity for edge creation (default: 0.5)
+    --top-k      Keep top-k most similar documents/terms per node (default: 20)
+    --max-rows   Limit number of rows (optional)
+    --device     Device: cpu, cuda, or mps (default: cpu)
+    --mode       Build document or term network (default: document)
+    --text-col   Column name for text content (default: text)
+    --subject-col Optional column for subject/thread when mode=term
+
+Outputs:
+    transformer_edges.csv in the output directory.
 """
 import argparse
 import pandas as pd
@@ -8,7 +29,16 @@ from .transformers_enhanced import TransformerSemanticNetwork
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Build transformer-based semantic network")
+    import os
+    import pandas as pd
+    ap = argparse.ArgumentParser(
+        description="Build transformer-based semantic network",
+        epilog="""
+Example:
+    python -m src.semantic.transformers_cli --input data.csv --outdir output/ --model sentence-transformers/all-MiniLM-L6-v2 --mode document
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     ap.add_argument("--input", required=True, help="Input CSV file containing text data")
     ap.add_argument("--outdir", required=True, help="Output directory")
     ap.add_argument("--model", default="sentence-transformers/all-MiniLM-L6-v2", 
@@ -61,9 +91,17 @@ def main():
             top_k=args.top_k
         )
     
-    edges_path = os.path.join(args.outdir, "transformer_edges.csv")
-    edges_df.to_csv(edges_path, index=False)
-    print(f"Saved {len(edges_df)} edges to {edges_path}")
+    import os
+    import pandas as pd
+    ext = getattr(args, "output_format", "csv") if hasattr(args, "output_format") else "csv"
+    edges_base = os.path.join(args.outdir, "transformer_edges")
+    if ext == "csv":
+        edges_df.to_csv(edges_base + ".csv", index=False)
+    elif ext == "json":
+        edges_df.to_json(edges_base + ".json", orient="records", indent=2)
+    elif ext == "parquet":
+        edges_df.to_parquet(edges_base + ".parquet", index=False)
+    print(f"Saved {len(edges_df)} edges to {edges_base}.{ext}")
 
 
 if __name__ == "__main__":

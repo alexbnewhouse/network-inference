@@ -220,14 +220,119 @@ python -m src.contagion.cli_inference edges.csv --model sir \
 
 ## Output Formats
 
-CLIs support `--output-dir` to save structured outputs:
+CLIs support `--output-dir` or `--output-path` to save structured outputs:
 
 - `events.csv`: Timestep, event type, node ID for each adoption/infection/recovery
 - `summary.json`: Cascade metrics (final size, peak time, adoption rate, etc.)
 - `trials.csv` (inference): All parameter combinations and scores
 - `best_params.json` (inference): Best-fit parameters and score
 
+All CLIs support multiple output formats via `--output-format`:
+- `csv` (default): Easy to inspect, widely compatible
+- `json`: Structured data, good for APIs
+- `parquet`: Compact, fast loading for large results
+
+## Config File Support
+
+All contagion CLIs accept `--config` to load parameters from JSON/YAML:
+
+```bash
+# Create config file
+cat > sim_config.json <<EOF
+{
+  "edges_csv": "network_edges.csv",
+  "model": "sir",
+  "beta": 0.15,
+  "gamma": 0.05,
+  "timesteps": 100,
+  "seed": 42,
+  "output_path": "results/simulation"
+}
+EOF
+
+# Run with config
+python -m src.contagion.cli --config sim_config.json
+
+# Override specific parameters
+python -m src.contagion.cli --config sim_config.json --beta 0.2
+```
+
+See `examples/contagion_config.json` and `examples/complex_contagion_config.json` for templates.
+
 ## Best Practices
+
+### Model Selection
+
+**When to use each model:**
+- **SI (Susceptible-Infected)**: Permanent adoption (e.g., technology adoption, knowledge spread)
+- **SIS (Susceptible-Infected-Susceptible)**: Temporary infection with recovery (e.g., rumors, seasonal illness)
+- **SIR (Susceptible-Infected-Recovered)**: One-time infection with immunity (e.g., disease with immunity)
+- **Watts Threshold**: Complex contagion requiring multiple exposures (e.g., social movements, behavior change)
+- **K-Reinforcement**: Fixed number of exposures needed (e.g., product recommendations)
+
+### Parameter Selection
+
+**Simple Contagion (SI/SIS/SIR)**
+- **Beta (infection rate)**: Start with 0.05-0.2 for realistic spread; higher = faster spread
+- **Gamma (recovery rate)**: For SIS/SIR, try 0.01-0.1; higher = faster recovery
+- **Rule of thumb**: beta > gamma leads to epidemic; beta < gamma leads to die-out
+
+**Complex Contagion (Watts/K-Reinforcement)**
+- **Phi (threshold fraction)**: 0.15-0.25 typical; lower = easier spread
+- **K (count threshold)**: 2-4 typical; higher = harder to spread
+- **Network matters**: Complex contagion sensitive to clustering and degree distribution
+
+### Simulation Best Practices
+
+1. **Reproducibility**: Always set `--seed` for deterministic results
+2. **Early stopping**: Use `--early-stop 10` to halt when no changes for 10 steps
+3. **Initial conditions**: 
+   - Use `--patient-zero N` for single seed at node N
+   - Use `--initial-frac 0.01` for random 1% seeding
+   - More seeds = faster spread but less variance
+4. **Timesteps**: Start with 50-100; increase if cascade still growing
+5. **Large graphs**: Use multiprocessing backend for > 50k nodes
+
+### Parameter Inference
+
+**Grid vs Random Search**
+- **Grid**: Exhaustive but slow; use for final tuning (n_samples=20-50)
+- **Random**: Faster exploration; use for initial search (n_samples=100+)
+
+**Setting Parameter Ranges**
+- Start wide (beta: 0.01-0.5, gamma: 0.01-0.3)
+- Refine based on initial results
+- Check that best params aren't at boundaries (indicates need to expand)
+
+**Matching Observations**
+- Ensure `--observed-final-size` is realistic for network size
+- Set `--observed-initial-seeds` to match your cascade
+- More timesteps = better fit but slower inference
+
+### Integration with Networks
+
+**Using Semantic/Actor Networks**
+```python
+# Load network from semantic pipeline
+edges_df = pd.read_csv('output/semantic/edges.csv')
+
+# Run contagion
+python -m src.contagion.cli output/semantic/edges.csv \
+  --model si --beta 0.1 --timesteps 100 \
+  --source-col src --target-col dst
+```
+
+**Directed vs Undirected**
+- Social networks: Usually directed (`--directed`)
+- Co-occurrence networks: Usually undirected (default)
+- Actor/reply networks: Directed
+
+### Validation and Analysis
+
+1. **Visualize cascades**: Plot infected count over time to check for realistic curves
+2. **Check metrics**: Use `compute_cascade_metrics()` to analyze results
+3. **Compare models**: Run multiple models on same network to compare spread patterns
+4. **Sensitivity analysis**: Vary parameters systematically to understand dynamics
 
 1. **Reproducibility**: Always set `seed` parameter for deterministic results
 2. **Early stopping**: Use `--early-stop N` to halt when no changes for N steps
@@ -281,6 +386,111 @@ GPU tests skip automatically if cupy is unavailable.
 - **Memory**: GPU backend copies graph to device; ensure sufficient VRAM
 
 ## Troubleshooting
+
+### Simulation Issues
+
+**Q: No spread occurs (final_size = initial_seeds)**
+- **Solution**: Increase beta (infection rate) - try 0.1-0.3
+- **Check**: Network connectivity - use NetworkX to check if graph is connected
+- **Check**: For complex contagion, lower phi threshold or k value
+- **Debug**: Print degree distribution to ensure nodes have neighbors
+
+**Q: Everyone gets infected immediately**
+- **Solution**: Decrease beta - try 0.01-0.05
+- **Solution**: For complex contagion, increase phi or k
+- **Check**: Is network very dense? Consider using SIS/SIR with recovery
+
+**Q: Simulation reaches steady state too quickly**
+- **Solution**: Increase timesteps if cascade still growing at end
+- **Solution**: Try different initial seeding (more/fewer seeds)
+- **Check**: Use `--early-stop 0` to disable early stopping and see full dynamics
+
+**Q: Results not reproducible**
+- **Solution**: Always set `--seed 42` (or any integer)
+- **Check**: Ensure you're using same network (node order matters)
+
+### Performance Issues
+
+**Q: Multiprocessing slower than CPU**
+- **Explanation**: Overhead dominates for small graphs
+- **Solution**: Use CPU backend for < 10k nodes
+- **Solution**: Try fewer workers (2-4) for medium graphs: use programmatic API
+
+**Q: Out of memory**
+- **Solution**: Use CSR backend (default) instead of dense arrays
+- **Solution**: For GPU, ensure sufficient VRAM
+- **Check**: Network size - very large graphs (>1M edges) may need chunking
+
+**Q: Inference taking too long**
+- **Solution**: Use `--search-mode random` with fewer samples
+- **Solution**: Reduce timesteps for initial exploration
+- **Solution**: Narrow parameter ranges based on domain knowledge
+
+### Output Issues
+
+**Q: Events CSV is huge**
+- **Explanation**: Events log every state change for every node
+- **Solution**: Use `--output-format parquet` for compression
+- **Solution**: Use summary metrics instead of full event log
+- **Alternative**: Save only states, compute events post-hoc
+
+**Q: Inference returns poor fit**
+- **Solution**: Increase `n_samples` for finer grid search (try 50-100)
+- **Solution**: Expand parameter ranges (beta_min/max, gamma_min/max)
+- **Check**: Model assumptions - does SI/SIS/SIR match your cascade type?
+- **Check**: Observed final size realistic? Should be < network size
+
+**Q: Can't load results in pandas**
+- **Solution**: Check file paths and permissions
+- **Solution**: Try different output format: `--output-format json`
+- **Check**: Ensure output directory exists and is writable
+
+### Network Compatibility Issues
+
+**Q: Column not found errors**
+- **Solution**: Specify column names: `--source-col src --target-col dst`
+- **Solution**: Ensure CSV has header row with column names
+- **Check**: Print `df.columns` to see available columns
+
+**Q: Non-integer node IDs**
+- **Good news**: CLIs auto-convert string IDs to integers
+- **Note**: Mapping is preserved in order (but not saved by default)
+- **Solution**: For custom mapping, use programmatic API
+
+**Q: Directed vs undirected mismatch**
+- **Check**: Does your network have `source`/`target` (directed) or just edges?
+- **Solution**: Use `--directed` flag for directed networks
+- **Note**: Undirected is default (each edge goes both ways)
+
+### Model-Specific Issues
+
+**Q: Complex contagion not spreading**
+- **Check**: Clustering coefficient - complex contagion needs clustering
+- **Solution**: Lower phi from 0.18 to 0.10-0.15
+- **Solution**: Check if network has triangles (necessary for threshold models)
+
+**Q: SIS/SIR gamma parameter ignored**
+- **Check**: Did you specify gamma? It's required for SIS/SIR
+- **Solution**: Add `--gamma 0.05` to command
+- **Note**: SI model doesn't use gamma (no recovery)
+
+**Q: Inference converges to boundary values**
+- **Explanation**: Optimal params are outside your search range
+- **Solution**: Expand ranges if best is at beta_max or beta_min
+- **Solution**: Check observed_final_size is reasonable
+
+### Getting Help
+
+If issues persist:
+
+1. **Enable verbose output**: Set `--seed 42` and check results are consistent
+2. **Test on small network**: Create a simple test graph (5-10 nodes) to debug
+3. **Check examples**: Run example notebooks to verify installation
+4. **Open an issue**: Include:
+   - Command or code snippet
+   - Network size and type (directed/undirected)
+   - Expected vs actual behavior
+   - Error message with full traceback
 
 **Q: Simulation reaches steady state too quickly**
 - Try higher `beta` or lower threshold

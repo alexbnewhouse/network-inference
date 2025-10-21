@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,7 @@ from .backends import to_csr_adjacency
 from .models import WattsThresholdModel, KReinforcementModel
 from .simulator import run_simulation
 from .analysis import compute_cascade_metrics, events_to_dataframe
+from .config_loader import add_config_argument, merge_config_with_args
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -29,6 +31,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--source-col", type=str, default="source")
     p.add_argument("--target-col", type=str, default="target")
     p.add_argument("--output-dir", type=str, help="Directory to save outputs (events, summary)")
+    p.add_argument("--output-format", choices=["csv", "json", "parquet"], default="csv", help="Output format (default: csv)")
+    p.add_argument("--output-path", type=str, help="Base path for output files (alternative to --output-dir)")
+    add_config_argument(p)
     return p
 
 
@@ -51,6 +56,10 @@ def _coerce_edges_to_int(df: pd.DataFrame, src_col: str, dst_col: str) -> tuple[
 def main(argv: Optional[list[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+    
+    # Merge config file if provided
+    args = merge_config_with_args(parser, args, getattr(args, 'config', None))
+    
     df = pd.read_csv(args.edges_csv)
 
     edges, n = _coerce_edges_to_int(df, args.source_col, args.target_col)
@@ -73,10 +82,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         k_init = max(1, int(round(n * args.initial_frac)))
         idx = rng.choice(n, size=k_init, replace=False)
         init[idx] = 1
-    else:
-        if n > 0:
-            init[rng.integers(0, n)] = 1
 
+    # Run simulation
     res = run_simulation(model, adj, init, timesteps=args.timesteps, seed=args.seed, early_stop=args.early_stop)
     metrics = compute_cascade_metrics(res.states, n)
 
@@ -89,17 +96,32 @@ def main(argv: Optional[list[str]] = None) -> int:
         "peak_time": metrics.peak_time,
         "adoption_rate": metrics.adoption_rate,
     }
-    print(json.dumps(summary, indent=2))
-
-    if args.output_dir:
+    print("Simulation complete.")
+    events_df = events_to_dataframe(res.events)
+    if getattr(args, "output_path", None):
+        base = args.output_path
+        ext = getattr(args, "output_format", "csv")
+        os.makedirs(os.path.dirname(base), exist_ok=True) if os.path.dirname(base) else None
+        if ext == "csv":
+            events_df.to_csv(base + "_events.csv", index=False)
+            pd.DataFrame([summary]).to_csv(base + "_summary.csv", index=False)
+        elif ext == "json":
+            events_df.to_json(base + "_events.json", orient="records", indent=2)
+            with open(base + "_summary.json", "w") as f:
+                json.dump(summary, f, indent=2)
+        elif ext == "parquet":
+            events_df.to_parquet(base + "_events.parquet", index=False)
+            pd.DataFrame([summary]).to_parquet(base + "_summary.parquet", index=False)
+        print(f"Results saved to {base}_events.{ext} and {base}_summary.{ext}")
+    elif getattr(args, "output_dir", None):
         out_path = Path(args.output_dir)
         out_path.mkdir(parents=True, exist_ok=True)
-        events_df = events_to_dataframe(res.events)
         events_df.to_csv(out_path / "events.csv", index=False)
         with open(out_path / "summary.json", "w") as f:
             json.dump(summary, f, indent=2)
         print(f"Outputs saved to {out_path}")
-
+    else:
+        print(json.dumps(summary, indent=2))
     return 0
 
 

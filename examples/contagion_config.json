@@ -1,0 +1,12 @@
+{
+  "edges_csv": "data/edges.csv",
+  "model": "sir",
+  "beta": 0.15,
+  "gamma": 0.05,
+  "timesteps": 100,
+  "initial_frac": 0.01,
+  "seed": 42,
+  "directed": false,
+  "output_path": "results/sir_simulation",
+  "output_format": "csv"
+}

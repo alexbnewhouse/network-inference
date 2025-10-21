@@ -1,0 +1,11 @@
+{
+  "edges_csv": "data/edges.csv",
+  "model": "watts",
+  "phi": 0.18,
+  "timesteps": 50,
+  "patient_zero": 0,
+  "seed": 42,
+  "directed": false,
+  "output_path": "results/watts_simulation",
+  "output_format": "json"
+}

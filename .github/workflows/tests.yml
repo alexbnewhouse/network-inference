@@ -34,3 +34,4 @@ jobs:
           TOKENIZERS_PARALLELISM: "false"
         run: |
           python -m unittest discover tests -v
+          echo "All tests passed including contagion module"

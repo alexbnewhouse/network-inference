@@ -208,6 +208,37 @@ python -m src.semantic.community_cli \
 
 </details>
 
+### 7. Network Contagion & Diffusion
+
+**NEW**: Simulate information spread, adoption cascades, and epidemic dynamics on your networks.
+
+```bash
+# Simple contagion (SI/SIS/SIR models)
+python -m src.contagion.cli output/semantic/edges.csv \
+  --model sir --beta 0.1 --gamma 0.05 --timesteps 100
+
+# Complex contagion (Watts threshold model)
+python -m src.contagion.cli_complex output/semantic/edges.csv \
+  --model watts --phi 0.18 --timesteps 50 --output-dir results/
+
+# Infer parameters from observed cascades
+python -m src.contagion.cli_inference output/semantic/edges.csv \
+  --model si --observed-final-size 150 --n-samples 20
+```
+
+<details>
+<summary>What this does</summary>
+
+- Simulates disease/information spread on any network
+- Models: SI, SIS, SIR (simple), Watts/K-reinforcement (complex)
+- Supports CPU, multiprocessing, and GPU acceleration
+- Infers transmission parameters from observed data
+- Outputs: cascade timeseries, adoption curves, events log
+
+**See [CONTAGION.md](CONTAGION.md) for full guide**
+
+</details>
+
 ## Working with Real Data
 
 See **[REAL_DATA_USAGE.md](REAL_DATA_USAGE.md)** for complete guide on using `pol_archive_0.csv` and other datasets.

@@ -1,14 +1,15 @@
 # Quick Start: Processing Your 1M /pol/ Posts
 
-## Step 1: Install FAISS GPU (one-time setup)
+## Step 1: No Installation Needed!
+
+The batch processing method works out of the box - no FAISS required!
 
 ```bash
 cd /Users/alexnewhouse/network_inference
 source .venv/bin/activate
-pip install faiss-gpu
 ```
 
-**Note**: If you're on Mac, use `faiss-cpu` instead (no CUDA support on Mac).
+**Note**: FAISS is optional and has compatibility issues with Python 3.12+. The default batch processing is reliable and production-ready.
 
 ## Step 2: Run the Transformer CLI
 
@@ -30,10 +31,13 @@ Encoding documents...
 Batches: 100%|████████| 31250/31250 [12:34<00:00, 41.43it/s]
 ```
 
-### Phase 2: FAISS Search (estimate: 35-40 minutes)
+### Phase 2: Batch Processing (estimate: 100-120 minutes)
 ```
-Using FAISS for efficient similarity search (1,000,000 documents)...
-Building edge list... 100%|████████| 1000000/1000000 [35:42<00:00, 467.12it/s]
+Using memory-efficient batch processing (1,000,000 documents)...
+Processing batch 1/100...
+Processing batch 2/100...
+...
+Processing batch 100/100...
 Found 12,456,789 edges
 ```
 
@@ -57,26 +61,32 @@ source,target,similarity
 
 **Size**: ~500-800 MB for 10-20M edges
 
-**Time**: ~50 minutes total on RTX 5090
+**Time**: ~2 hours total on RTX 5090
 
 **Memory**: 
-- RAM: ~15 GB peak
+- RAM: ~20-25 GB peak
 - VRAM: ~8 GB
+
+**Stable**: No FAISS crashes, production-ready!
 
 ## Troubleshooting
 
 ### If you get "CUDA out of memory"
 
-Reduce batch size for encoding:
+The encoding phase uses GPU memory. If you run out:
 ```bash
-# The encoder uses default batch_size=32
-# If OOM, you may need to edit transformers_enhanced.py temporarily
-# or process in chunks
+# Use CPU for encoding (slower but works)
+python -m src.semantic.transformers_cli \
+  --input ../Dropbox/accdb_etl_pipeline/data/pol_archive_0.csv \
+  --outdir output/pol_transformer_network \
+  --text-col body \
+  --device cpu \
+  --top-k 20
 ```
 
-### If FAISS crashes (segfault)
+### If you get "Out of memory" during batch processing
 
-Fall back to batch processing:
+Reduce the batch size:
 ```bash
 python -m src.semantic.transformers_cli \
   --input ../Dropbox/accdb_etl_pipeline/data/pol_archive_0.csv \
@@ -84,12 +94,21 @@ python -m src.semantic.transformers_cli \
   --text-col body \
   --device cuda \
   --top-k 20 \
-  --similarity-threshold 0.5 \
-  --no-faiss \
-  --batch-size 10000
+  --batch-size 5000  # Smaller batches use less RAM
 ```
 
-This will be slower (~2 hours) but more stable.
+### If processing is too slow
+
+```bash
+# Reduce number of edges (faster)
+python -m src.semantic.transformers_cli \
+  --input ../Dropbox/accdb_etl_pipeline/data/pol_archive_0.csv \
+  --outdir output/pol_transformer_network \
+  --text-col body \
+  --device cuda \
+  --top-k 10 \
+  --similarity-threshold 0.7
+```
 
 ### If still having memory issues
 
@@ -188,12 +207,14 @@ for post_id, score in top_posts[:10]:
 
 ## Estimated Timeline
 
-- ✅ Install FAISS: 1-2 minutes
+- ✅ Activate environment: 10 seconds
 - ✅ Run encoding: 12-15 minutes
-- ✅ Run FAISS search: 35-40 minutes
+- ✅ Run batch processing: 100-120 minutes
 - ✅ Load and analyze: 5-10 minutes
 
-**Total**: ~1 hour from start to finish
+**Total**: ~2 hours from start to finish
+
+**Reliable**: No FAISS installation, no crashes, production-ready!
 
 ## Questions?
 

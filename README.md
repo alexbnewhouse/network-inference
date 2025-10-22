@@ -8,7 +8,8 @@ Fast, scalable semantic networks, knowledge graphs, and actor networks from text
 > **Recent Updates (Oct 2025):** 
 > - **NEW: Automatic Scaling for Large Datasets** 🚀
 >   - Transformer networks now process 1M+ documents automatically
->   - Auto-selects best method: full matrix, FAISS, or batch processing
+>   - Memory-efficient batch processing (no FAISS dependency issues!)
+>   - Works reliably on Python 3.12+ 
 >   - No configuration needed - just run your command!
 >   - See [SCALING_GUIDE.md](SCALING_GUIDE.md) and [TRANSFORMER_SCALING_UPDATE.md](TRANSFORMER_SCALING_UPDATE.md)
 > - **NEW: GPU-Accelerated Transformer Sentiment Analysis** 🤖
@@ -551,10 +552,10 @@ output/transformer/
 
 **Note**: Transformer networks now **automatically scale** to large datasets:
 - **<10K docs**: Uses full similarity matrix (fastest)
-- **>10K docs**: Automatically uses FAISS for efficient search (requires `pip install faiss-cpu` or `faiss-gpu`)
-- **No FAISS**: Falls back to memory-efficient batch processing
+- **>10K docs**: Automatically uses memory-efficient batch processing (stable, production-ready)
+- **Optional FAISS**: Available but has compatibility issues with Python 3.12+
 
-See [SCALING_GUIDE.md](SCALING_GUIDE.md) for processing 100K-1M+ documents.
+No special installation needed! See [SCALING_GUIDE.md](SCALING_GUIDE.md) for processing 100K-1M+ documents.
 
 ## Performance Guide
 
@@ -564,11 +565,11 @@ See [SCALING_GUIDE.md](SCALING_GUIDE.md) for processing 100K-1M+ documents.
 |-----------|--------|------|--------|------|-------|
 | <1K | Any | Seconds | <100MB | No | All methods work great |
 | 1K-10K | Semantic/KG/Transformer | 1-5 min | <500MB | No | Transformers use full matrix |
-| 10K-100K | Semantic/Transformer+FAISS | 5-30 min | 1-4GB | Recommended | Auto-switches to FAISS |
-| 100K-1M | Transformer+FAISS+GPU | 30-120 min | 4-16GB | Yes | Install faiss-gpu |
-| >1M | Transformer+FAISS+GPU | 1-3 hours | 16GB+ | Yes | See SCALING_GUIDE.md |
+| 10K-100K | Semantic/Transformer | 5-30 min | 1-4GB | Recommended | Auto-batch processing |
+| 100K-1M | Transformer+GPU | 30-120 min | 4-20GB | Yes | Batch processing scales well |
+| >1M | Transformer+GPU | 1-3 hours | 20GB+ | Yes | See SCALING_GUIDE.md |
 
-**Transformers**: Now scale to millions of documents with automatic FAISS optimization. Install with `pip install faiss-cpu` (or `faiss-gpu` for NVIDIA GPUs).
+**Transformers**: Now scale to millions of documents with automatic batch processing. No special installation needed!
 
 ### Speed Optimization
 

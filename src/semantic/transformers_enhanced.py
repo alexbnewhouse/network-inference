@@ -154,7 +154,7 @@ class TransformerSemanticNetwork:
         texts: List[str],
         similarity_threshold: float = 0.5,
         top_k: Optional[int] = None,
-        use_faiss: bool = True,
+        use_faiss: bool = False,  # Disabled by default - FAISS unstable on Python 3.12+
         batch_size: int = 10000
     ) -> pd.DataFrame:
         """
@@ -164,11 +164,16 @@ class TransformerSemanticNetwork:
             texts: List of documents
             similarity_threshold: Minimum similarity for edge creation
             top_k: Keep only top-k most similar documents per document
-            use_faiss: Use FAISS for efficient approximate nearest neighbors (recommended for >10K docs)
-            batch_size: Batch size for similarity computation when not using FAISS
+            use_faiss: Use FAISS for efficient approximate nearest neighbors 
+                      (disabled by default - unstable on Python 3.12+)
+            batch_size: Batch size for similarity computation (default=10000)
             
         Returns:
             DataFrame with columns: source, target, similarity
+            
+        Note:
+            For large datasets (>10K docs), batch processing is automatically
+            used. FAISS is available but optional due to Python 3.12+ compatibility issues.
         """
         # Handle empty or single document
         if len(texts) == 0:
@@ -181,11 +186,13 @@ class TransformerSemanticNetwork:
         
         n_docs = len(texts)
         
-        # For large datasets (>10K), use FAISS for efficient similarity search
+        # For large datasets (>10K), optionally use FAISS if explicitly requested
+        # Note: FAISS has compatibility issues with Python 3.12+ so disabled by default
         if use_faiss and n_docs > 10000:
             try:
                 import faiss
                 print(f"Using FAISS for efficient similarity search ({n_docs:,} documents)...")
+                print("⚠️  Note: FAISS may be unstable on Python 3.12+")
                 
                 # Make a copy to avoid modifying original
                 embeddings_faiss = embeddings.copy()
@@ -223,12 +230,12 @@ class TransformerSemanticNetwork:
                 return pd.DataFrame(edges)
                 
             except ImportError:
-                print("⚠️  FAISS not available. Install with: pip install faiss-cpu or faiss-gpu")
-                print("Falling back to batch processing (slower)...")
+                print("⚠️  FAISS not available. Using memory-efficient batch processing instead.")
+                print("   This is recommended for Python 3.12+ due to FAISS compatibility issues.")
                 use_faiss = False
             except Exception as e:
                 print(f"⚠️  FAISS error: {e}")
-                print("Falling back to batch processing...")
+                print("   Falling back to memory-efficient batch processing (recommended)...")
                 use_faiss = False
         
         # For smaller datasets or if FAISS unavailable, use batch processing

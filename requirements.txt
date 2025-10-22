@@ -28,14 +28,15 @@ cupy-cuda12x; platform_system=="Linux" or platform_system=="Windows"
 # For Apple Silicon: pip install torch torchvision torchaudio
 # Then: pip install transformers accelerate
 
-# Optional: FAISS for efficient similarity search (recommended for >10K documents)
-# Uncomment for CPU-only version:
-# faiss-cpu>=1.7.4
+# Optional: FAISS for efficient similarity search 
+# ⚠️ NOT RECOMMENDED for Python 3.12+ due to compatibility issues (segfaults)
+# The default batch processing method is stable and production-ready
 #
-# Or for GPU version (NVIDIA only):
-# faiss-gpu>=1.7.4
+# If you're on Python 3.9-3.11 and want to try FAISS:
+# faiss-cpu>=1.7.4  # CPU version
+# faiss-gpu>=1.7.4  # GPU version (NVIDIA only)
 #
-# Installation instructions:
+# Installation instructions (Python 3.9-3.11 only):
 # For CPU: pip install faiss-cpu
 # For GPU: pip install faiss-gpu
 #

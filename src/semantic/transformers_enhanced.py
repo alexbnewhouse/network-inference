@@ -9,6 +9,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import psutil
+import gc
 
 
 class TransformerEmbeddings:
@@ -180,11 +182,29 @@ class TransformerSemanticNetwork:
             return pd.DataFrame(columns=['source', 'target', 'similarity'])
         if len(texts) == 1:
             return pd.DataFrame(columns=['source', 'target', 'similarity'])
-            
-        print("Encoding documents...")
-        embeddings = self.embedder.encode(texts, show_progress=True)
         
+        # Check available memory before starting
+        mem = psutil.virtual_memory()
+        available_gb = mem.available / (1024**3)
         n_docs = len(texts)
+        
+        print(f"\n📊 Dataset: {n_docs:,} documents")
+        print(f"💾 Available RAM: {available_gb:.1f} GB")
+        
+        # Estimate memory requirements
+        if n_docs > 10000:
+            estimated_gb = (n_docs * batch_size * 4) / (1024**3)  # float32 similarity matrix
+            print(f"📈 Estimated peak memory: ~{estimated_gb:.1f} GB (batch_size={batch_size:,})")
+            
+            if estimated_gb > available_gb * 0.8:  # Leave 20% buffer
+                recommended_batch = int(available_gb * 0.8 * (1024**3) / (n_docs * 4))
+                print(f"⚠️  WARNING: May run out of memory!")
+                print(f"💡 Recommended batch_size: {recommended_batch:,} (or use --batch-size {recommended_batch})")
+                print(f"   Or reduce dataset with --max-rows or increase --similarity-threshold")
+                
+            
+        print("\nEncoding documents...")
+        embeddings = self.embedder.encode(texts, show_progress=True)
         
         # For large datasets (>10K), optionally use FAISS if explicitly requested
         # Note: FAISS has compatibility issues with Python 3.12+ so disabled by default
@@ -268,38 +288,77 @@ class TransformerSemanticNetwork:
             edges = []
             
             # Normalize embeddings for cosine similarity
+            print("Normalizing embeddings...")
             norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
             embeddings_norm = embeddings / np.maximum(norms, 1e-12)
             
             # Process in batches to avoid memory issues
+            num_batches = (n_docs + batch_size - 1) // batch_size
+            print(f"Processing {num_batches} batches of up to {batch_size:,} documents each...\n")
+            
             for i in range(0, n_docs, batch_size):
                 batch_end = min(i + batch_size, n_docs)
-                print(f"Processing batch {i//batch_size + 1}/{(n_docs + batch_size - 1)//batch_size}...")
+                batch_num = i // batch_size + 1
                 
-                # Compute similarities for this batch
-                batch_sims = embeddings_norm[i:batch_end] @ embeddings_norm.T
+                # Check memory before processing batch
+                mem = psutil.virtual_memory()
+                mem_used_gb = (mem.total - mem.available) / (1024**3)
+                mem_total_gb = mem.total / (1024**3)
+                mem_pct = mem.percent
                 
-                for batch_idx, doc_idx in enumerate(range(i, batch_end)):
-                    similarities = batch_sims[batch_idx]
+                print(f"Batch {batch_num}/{num_batches} | Docs {i:,}-{batch_end:,} | RAM: {mem_used_gb:.1f}/{mem_total_gb:.1f} GB ({mem_pct:.1f}%)")
+                
+                # Warning if memory getting tight
+                if mem_pct > 85:
+                    print(f"  ⚠️  High memory usage! Consider reducing --batch-size or --max-rows")
+                
+                try:
+                    # Compute similarities for this batch
+                    batch_sims = embeddings_norm[i:batch_end] @ embeddings_norm.T
                     
-                    # Get top-k most similar (excluding self)
-                    if top_k:
-                        sorted_indices = np.argsort(similarities)[::-1]
-                        # Skip self and take next top_k
-                        candidates = [idx for idx in sorted_indices[:top_k+10] if idx != doc_idx][:top_k]
-                    else:
-                        candidates = [idx for idx in range(n_docs) if idx != doc_idx]
+                    for batch_idx, doc_idx in enumerate(range(i, batch_end)):
+                        similarities = batch_sims[batch_idx]
+                        
+                        # Get top-k most similar (excluding self)
+                        if top_k:
+                            sorted_indices = np.argsort(similarities)[::-1]
+                            # Skip self and take next top_k
+                            candidates = [idx for idx in sorted_indices[:top_k+10] if idx != doc_idx][:top_k]
+                        else:
+                            candidates = [idx for idx in range(n_docs) if idx != doc_idx]
+                        
+                        for j in candidates:
+                            sim = float(similarities[j])
+                            if sim >= similarity_threshold:
+                                edges.append({
+                                    "source": doc_idx,
+                                    "target": j,
+                                    "similarity": sim
+                                })
                     
-                    for j in candidates:
-                        sim = float(similarities[j])
-                        if sim >= similarity_threshold:
-                            edges.append({
-                                "source": doc_idx,
-                                "target": j,
-                                "similarity": sim
-                            })
+                    # Clean up batch memory
+                    del batch_sims
+                    
+                except MemoryError as e:
+                    print(f"\n❌ OUT OF MEMORY at batch {batch_num}!")
+                    print(f"   Processed {i:,} of {n_docs:,} documents before running out of memory")
+                    print(f"   Edges found so far: {len(edges):,}")
+                    print(f"\n💡 Solutions:")
+                    print(f"   1. Reduce batch size: --batch-size {batch_size//2}")
+                    print(f"   2. Process fewer documents: --max-rows {i}")
+                    print(f"   3. Increase similarity threshold: --similarity-threshold 0.7")
+                    print(f"   4. Reduce top-k: --top-k {top_k//2 if top_k else 10}")
+                    raise MemoryError(f"Out of memory at batch {batch_num}. See suggestions above.") from e
+                
+                # Periodic garbage collection
+                if batch_num % 10 == 0:
+                    gc.collect()
         
-            print(f"Found {len(edges):,} edges")
+            print(f"\n✅ Found {len(edges):,} edges")
+            
+            # Final memory report
+            mem = psutil.virtual_memory()
+            print(f"💾 Final RAM usage: {(mem.total - mem.available) / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent:.1f}%)")
                     
         return pd.DataFrame(edges)
     

@@ -153,14 +153,65 @@ python -m src.semantic.transformers_cli \
 
 ## Troubleshooting
 
-### Memory Error with Batch Processing
+### Memory Monitoring (NEW!)
 
-If you still get memory errors:
+The system now monitors memory usage in real-time and provides warnings:
 
-1. **Reduce batch size**: Use `--batch-size 5000` or `--batch-size 2500`
-2. **Reduce top-k**: Use `--top-k 10` instead of 20
-3. **Increase threshold**: Use `--similarity-threshold 0.7` to keep only strongest edges
-4. **Process in chunks**: Use `--max-rows 100000` to process subset first
+```
+📊 Dataset: 100,000 documents
+💾 Available RAM: 32.5 GB
+📈 Estimated peak memory: ~4.0 GB (batch_size=10,000)
+
+Batch 1/10 | Docs 0-10,000 | RAM: 8.5/64.0 GB (13.3%)
+Batch 2/10 | Docs 10,000-20,000 | RAM: 10.2/64.0 GB (16.0%)
+...
+```
+
+If memory gets tight (>85%), you'll see:
+```
+⚠️  High memory usage! Consider reducing --batch-size or --max-rows
+```
+
+### "Killed" Error (Process Terminated)
+
+If you see just "Killed" with no explanation, your OS terminated the process due to out-of-memory.
+
+**Why this happens**:
+- Your dataset is too large for available RAM
+- Batch size is too high
+- Other programs using memory
+
+**Solutions**:
+1. **Reduce batch size**:
+   ```bash
+   --batch-size 5000  # Half the default
+   --batch-size 2500  # Quarter the default
+   ```
+
+2. **Process fewer documents**:
+   ```bash
+   --max-rows 50000  # Process only 50K docs
+   ```
+
+3. **Reduce edges per document**:
+   ```bash
+   --top-k 10  # Instead of 20
+   ```
+
+4. **Higher similarity threshold**:
+   ```bash
+   --similarity-threshold 0.7  # Only strongest connections
+   ```
+
+5. **Close other programs** to free up RAM
+
+6. **Check memory before starting**:
+   ```bash
+   # Mac/Linux
+   free -h  # or: top, htop
+   ```
+
+The new memory monitoring will warn you BEFORE running out of memory!
 
 ### Slow Performance
 

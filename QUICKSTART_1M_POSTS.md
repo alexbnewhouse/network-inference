@@ -25,21 +25,37 @@ python -m src.semantic.transformers_cli \
 
 ## What Will Happen
 
-### Phase 1: Encoding (estimate: 12-15 minutes)
+### Phase 1: Memory Check & Encoding (estimate: 12-15 minutes)
 ```
+📊 Dataset: 1,000,000 documents
+💾 Available RAM: 32.5 GB
+📈 Estimated peak memory: ~4.0 GB (batch_size=10,000)
+
 Encoding documents...
 Batches: 100%|████████| 31250/31250 [12:34<00:00, 41.43it/s]
 ```
 
+**Note**: The system checks available memory and warns if you might run out!
+
 ### Phase 2: Batch Processing (estimate: 100-120 minutes)
 ```
 Using memory-efficient batch processing (1,000,000 documents)...
-Processing batch 1/100...
-Processing batch 2/100...
+Normalizing embeddings...
+Processing 100 batches of up to 10,000 documents each...
+
+Batch 1/100 | Docs 0-10,000 | RAM: 8.5/64.0 GB (13.3%)
+Batch 2/100 | Docs 10,000-20,000 | RAM: 10.2/64.0 GB (16.0%)
 ...
-Processing batch 100/100...
-Found 12,456,789 edges
+Batch 100/100 | Docs 990,000-1,000,000 | RAM: 18.5/64.0 GB (28.9%)
+
+✅ Found 12,456,789 edges
+💾 Final RAM usage: 18.5/64.0 GB (28.9%)
 ```
+
+**Features**:
+- Real-time memory monitoring
+- Automatic warnings if memory gets tight (>85%)
+- Graceful error messages if out of memory
 
 ### Phase 3: Saving Results
 ```
@@ -70,6 +86,48 @@ source,target,similarity
 **Stable**: No FAISS crashes, production-ready!
 
 ## Troubleshooting
+
+### "Killed" - Process Terminated
+
+If you just see "Killed" with no explanation, your OS terminated the process due to **out of memory**.
+
+**The new version prevents this!** It now:
+- ✅ Checks available memory before starting
+- ✅ Estimates memory requirements
+- ✅ Monitors RAM usage per batch
+- ✅ Warns you at >85% memory usage
+- ✅ Provides clear error messages with solutions
+
+**If you still run out of memory**:
+
+```bash
+# Solution 1: Reduce batch size (uses less RAM)
+python -m src.semantic.transformers_cli \
+  --input ../Dropbox/accdb_etl_pipeline/data/pol_archive_0.csv \
+  --outdir output/pol_network \
+  --text-col body \
+  --device cuda \
+  --top-k 20 \
+  --batch-size 5000  # Half the default
+
+# Solution 2: Process fewer documents first
+python -m src.semantic.transformers_cli \
+  --input ../Dropbox/accdb_etl_pipeline/data/pol_archive_0.csv \
+  --outdir output/pol_network \
+  --text-col body \
+  --device cuda \
+  --top-k 20 \
+  --max-rows 500000  # Process 500K first
+
+# Solution 3: Fewer edges (faster, less memory)
+python -m src.semantic.transformers_cli \
+  --input ../Dropbox/accdb_etl_pipeline/data/pol_archive_0.csv \
+  --outdir output/pol_network \
+  --text-col body \
+  --device cuda \
+  --top-k 10 \
+  --similarity-threshold 0.7
+```
 
 ### If you get "CUDA out of memory"
 

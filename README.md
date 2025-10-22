@@ -2,56 +2,103 @@
 
 Fast, scalable semantic networks, knowledge graphs, and actor networks from text data. GPU-accelerated with transformer support.
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12-3.13](https://img.shields.io/badge/python-3.12--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **📢 Recent Updates (Oct 2025):** 
-> - 🚀 **NEW: Complete Knowledge Graph Platform for Social Scientists**
->   - ⏱️ Temporal analysis with event detection & trajectory classification
->   - � Enhanced sentiment: stance detection, framing analysis, temporal trends
->   - � User-entity networks with community detection
->   - 📊 Auto-generated quality reports
->   - � See [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md) for comprehensive guide
-> - ✨ All CLIs now support config files (JSON/YAML) via `--config`
-> - 📊 Multiple output formats: CSV, JSON, Parquet via `--output-format`
+> **Recent Updates (Oct 2025):** 
+> - **NEW: Complete Knowledge Graph Platform for Social Scientists**
+>   - Temporal analysis with event detection & trajectory classification
+>   - Enhanced sentiment: stance detection, framing analysis, temporal trends
+>   - User-entity networks with community detection
+>   - Auto-generated quality reports
+>   - See [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md) for comprehensive guide
+> - All CLIs now support config files (JSON/YAML) via `--config`
+> - Multiple output formats: CSV, JSON, Parquet via `--output-format`
 > - See [CHANGELOG_USABILITY.md](CHANGELOG_USABILITY.md) for full details
+
+---
+
+## New to This? Start Here!
+
+**If you're a social scientist new to computational text analysis**, follow this path:
+
+1. **[GETTING_STARTED.md](GETTING_STARTED.md)** - Step-by-step beginner guide (zero to first network in 15 min)
+2. **[tutorials/01_hello_world.md](tutorials/01_hello_world.md)** - 5-minute hands-on tutorial with sample data
+3. **[KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md)** - Complete guide to knowledge graphs for research
+4. **[DATA_REQUIREMENTS.md](DATA_REQUIREMENTS.md)** - How to format your CSV files
+
+**Already familiar with Python?** Jump to [Quick Start](#quick-start) below.
+
+---
+
+## Ethics & Privacy Warning
+
+**IMPORTANT**: Before analyzing social media data, review **[ETHICS.md](ETHICS.md)** for:
+- IRB requirements & exemptions for social media research
+- Privacy & anonymization best practices
+- Responsible reporting of sensitive data
+- Platform-specific ethical considerations (4chan, Reddit, Twitter)
+
+This toolkit is designed for **research purposes only**. Use responsibly and follow your institution's ethics guidelines.
+
+---
 
 ## Quick Start
 
+**First time?** Try this 2-minute demo with sample data:
+
 ```bash
-# Install
+# 1. Clone and enter the directory
 git clone https://github.com/alexbnewhouse/network-inference.git
 cd network-inference
+
+# 2. Install dependencies (use Python 3.12 or 3.13 - NOT 3.14)
+python3.12 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 
-# Build a semantic network (1 minute on 10K docs)
+# 3. Generate sample data and build your first network
+python examples/sample_data.py
 python -m src.semantic.build_semantic_network \
-  --input your_data.csv \
-  --outdir output/semantic \
-  --min-df 5 --topk 20
+  --input examples/sample_news.csv \
+  --outdir output/my_first_network \
+  --min-df 2 --topk 15
 ```
 
-**Output**: `nodes.csv`, `edges.csv`, `graph.graphml` ready for analysis or Gephi
+**Output**: You'll get `nodes.csv`, `edges.csv`, and `graph.graphml` files ready to:
+- Analyze in Excel/Python/R (CSV files)
+- Visualize in [Gephi](https://gephi.org/) (graphml file)
+- Import into your statistical software
+
+**Next steps**: See [GETTING_STARTED.md](GETTING_STARTED.md) to analyze your own data
+
+> **Python Version Note**: Use Python 3.12 or 3.13. Python 3.14 is too new and some dependencies don't compile yet.
 
 ## What You Can Build
 
-| Network Type | Use Case | Speed | Command |
-|-------------|----------|-------|---------|
-| **Semantic Network** | Topic/concept relationships | Fast (1-10 min) | `build_semantic_network` |
-| **Transformer Network** | Deep semantic similarity | Medium (5-30 min) | `transformers_cli` |
-| **Knowledge Graph** | Entity relationships | Fast (1-5 min) | `kg_cli` |
-| **Temporal KG** ✨ | Discourse evolution, events | Medium (10-60 min) | `kg_cli` + `kg_temporal_cli` |
-| **Sentiment Analysis** ✨ | Stance, framing, trends | Fast (5-15 min) | `kg_sentiment_enhanced_cli` |
-| **User-Entity Networks** ✨ | Community detection | Fast (5-20 min) | `kg_user_entity_network_cli` |
-| **Actor Network** | Social/reply networks | Fast (<1 min) | `actor_cli` |
-| **Time-Sliced** | Network evolution | Medium (10-60 min) | `time_slice_cli` |
+**Choose your analysis type based on your research question:**
 
-✨ = **New in Oct 2025** - See [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md)
+| Network Type | Best For | Example Research Questions | Speed |
+|-------------|----------|---------------------------|-------|
+| **Semantic Network** | Topic/concept relationships | "What ideas co-occur in climate change discourse?" | Fast (1-10 min) |
+| **Knowledge Graph** | Entity relationships | "Which politicians are discussed together?" | Fast (1-5 min) |
+| **Temporal KG** ✨ | Discourse evolution | "How did discussion of Russia change over time?" | Medium (10-60 min) |
+| **Sentiment Analysis** ✨ | Stance & framing | "Are comments pro- or anti-immigration?" | Fast (5-15 min) |
+| **User-Entity Networks** ✨ | Community detection | "Which users discuss similar topics?" | Fast (5-20 min) |
+| **Actor Network** | Social relationships | "Who replies to whom in this forum?" | Fast (<1 min) |
+| **Transformer Network** | Deep semantic similarity | "Which documents are semantically similar?" | Medium (5-30 min) |
+| **Time-Sliced** | Network evolution | "How did the network structure change monthly?" | Medium (10-60 min) |
+
+✨ = **New features in Oct 2025** - See [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md) for detailed guides
+
+**Not sure which to use?** Start with [GETTING_STARTED.md](GETTING_STARTED.md) - it walks through choosing the right tool.
 
 ## Installation
 
-### Basic (CPU only)
+**Recommended**: Python 3.12 or 3.13 (Python 3.14 not yet supported)
+
+### Basic Installation (CPU only - good for most use cases)
 
 ```bash
 git clone https://github.com/alexbnewhouse/network-inference.git
@@ -60,6 +107,11 @@ python3.12 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
+```
+
+**Troubleshooting**: If you get errors, make sure you're using Python 3.12 or 3.13:
+```bash
+python --version  # Should show Python 3.12.x or 3.13.x
 ```
 
 ### With Transformers (Better accuracy)
@@ -335,45 +387,62 @@ python -m src.semantic.kg_user_entity_network_cli \
 
 **📖 Complete Guide**: [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md) - 10,000+ word guide with examples, case studies, and research design advice
 
-## Working with Real Data
+## Working with Your Own Data
 
-See **[REAL_DATA_USAGE.md](REAL_DATA_USAGE.md)** for complete guide on using `pol_archive_0.csv` and other datasets.
+**See [DATA_REQUIREMENTS.md](DATA_REQUIREMENTS.md) for complete formatting guide**
 
-### Your Data Format
+### Minimum Requirements
 
-Minimum CSV requirements:
+Your data needs to be a **CSV file** with at least one text column:
 
 ```csv
 text
-"This is document one"
-"This is document two"
+"This is my first social media post about politics"
+"Another post discussing healthcare policy"
+"A third post mentioning both politics and healthcare"
 ```
 
-Optional columns (enable more features):
+That's it! Save this as `my_data.csv` and you're ready to analyze.
+
+### Recommended Format (enables all features)
+
+Include these optional columns to unlock advanced features:
 
 ```csv
-text,subject,timestamp,author,thread_id,post_id
-"Post content","Thread title","2024-01-01 12:00:00","user123","thread_1","post_1"
+text,timestamp,user_id,thread_id,post_id
+"Post content","2024-01-01 12:00:00","user123","thread_1","post_1"
+"Reply content","2024-01-01 12:05:00","user456","thread_1","post_2"
 ```
 
-### Flexible Column Names
+**What each column enables**:
+- `text` (required) - The content to analyze
+- `timestamp` - Time-sliced analysis, temporal trends
+- `user_id` - User-entity networks, community detection
+- `thread_id` - Actor networks, reply patterns
+- `post_id` - Reply network construction
 
-All CLIs accept custom column names:
+### Using Different Column Names
+
+Your CSV has different column names? No problem! Just tell the tool:
 
 ```bash
-# If your text is in a "body" column
+# If your text column is called "message" instead of "text"
 python -m src.semantic.build_semantic_network \
   --input data.csv \
-  --outdir output \
-  --text-col body
-
-# Multiple column mapping
-python -m src.semantic.actor_cli \
-  --input data.csv \
   --text-col message \
-  --thread-col conversation_id \
-  --post-col message_id
+  --outdir output
 ```
+
+**Common variations**: `body`, `content`, `message`, `post_text`, `comment` all work fine.
+
+### Real-World Examples
+
+See **[REAL_DATA_USAGE.md](REAL_DATA_USAGE.md)** for:
+- 4chan data formatting
+- Reddit data formatting  
+- Twitter/X data formatting
+- Survey data formatting
+- News article formatting
 
 ## Output Files
 

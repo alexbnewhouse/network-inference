@@ -186,8 +186,8 @@ def main():
     ap = argparse.ArgumentParser(description="Build a PPMI-weighted semantic co-occurrence network from CSV (scalable, GPU-ready)")
     ap.add_argument("--input", required=True, help="Path to CSV file containing text data")
     ap.add_argument("--outdir", required=True, help="Output directory")
-    ap.add_argument("--text-col", default="text", help="Column name for text content or 'auto' to detect (default: text)")
-    ap.add_argument("--subject-col", default=None, help="Optional column name for subject/thread or 'auto' to detect (default: subject if exists)")
+    ap.add_argument("--text-col", default="text", help="Column name for text content (default: text)")
+    ap.add_argument("--subject-col", default=None, help="Optional column name for subject/thread (default: subject if exists)")
     ap.add_argument("--min-df", type=int, default=5, help="Minimum document frequency for vocabulary")
     ap.add_argument("--max-vocab", type=int, default=None, help="Maximum vocabulary size")
     ap.add_argument("--window", type=int, default=10, help="Context window size for co-occurrence")
@@ -208,26 +208,11 @@ def main():
         df = read_dataset(args.input, max_rows=args.max_rows)
     else:
         raw = pd.read_csv(args.input, nrows=args.max_rows)
-        # Auto-detect text column if requested
-        text_col = args.text_col
-        if str(text_col).lower() == "auto":
-            candidates = [
-                "text", "body", "content", "message", "post", "comment", "selftext", "clean_text"
-            ]
-            text_col = next((c for c in candidates if c in raw.columns), None)
-            if text_col is None:
-                # Fallback to the longest string column
-                str_cols = [c for c in raw.columns if raw[c].dtype == object]
-                text_col = str_cols[0] if str_cols else None
-        if not text_col or text_col not in raw.columns:
-            raise ValueError(f"Text column not found. Use --text-col to specify. Available columns: {list(raw.columns)}")
+        if args.text_col not in raw.columns:
+            raise ValueError(f"Text column '{args.text_col}' not found. Available columns: {list(raw.columns)}")
         df = pd.DataFrame()
-        df["text"] = raw[text_col].fillna("").astype(str)
-        # Subject handling (optional)
+        df["text"] = raw[args.text_col].fillna("").astype(str)
         subj_col = args.subject_col if args.subject_col else ("subject" if "subject" in raw.columns else None)
-        if str(args.subject_col).lower() == "auto":
-            subj_candidates = ["subject", "thread", "title", "subj", "topic", "conversation_id"]
-            subj_col = next((c for c in subj_candidates if c in raw.columns), subj_col)
         if subj_col and subj_col in raw.columns:
             df["subject"] = raw[subj_col].fillna("").astype(str)
         else:

@@ -157,7 +157,8 @@ class TransformerSemanticNetwork:
         similarity_threshold: float = 0.5,
         top_k: Optional[int] = None,
         use_faiss: bool = False,  # Disabled by default - FAISS unstable on Python 3.12+
-        batch_size: int = 10000
+        batch_size: int = 10000,
+        encode_batch_size: int = 32
     ) -> pd.DataFrame:
         """
         Build document similarity network.
@@ -169,6 +170,7 @@ class TransformerSemanticNetwork:
             use_faiss: Use FAISS for efficient approximate nearest neighbors 
                       (disabled by default - unstable on Python 3.12+)
             batch_size: Batch size for similarity computation (default=10000)
+            encode_batch_size: Batch size for encoding (default=32, increase for GPU)
             
         Returns:
             DataFrame with columns: source, target, similarity
@@ -204,7 +206,7 @@ class TransformerSemanticNetwork:
                 
             
         print("\nEncoding documents...")
-        embeddings = self.embedder.encode(texts, show_progress=True)
+        embeddings = self.embedder.encode(texts, batch_size=encode_batch_size, show_progress=True)
         
         # For large datasets (>10K), optionally use FAISS if explicitly requested
         # Note: FAISS has compatibility issues with Python 3.12+ so disabled by default
@@ -306,35 +308,51 @@ class TransformerSemanticNetwork:
                 mem_total_gb = mem.total / (1024**3)
                 mem_pct = mem.percent
                 
-                print(f"Batch {batch_num}/{num_batches} | Docs {i:,}-{batch_end:,} | RAM: {mem_used_gb:.1f}/{mem_total_gb:.1f} GB ({mem_pct:.1f}%)")
+                print(f"Batch {batch_num}/{num_batches} | Docs {i:,}-{batch_end:,} | RAM: {mem_used_gb:.1f}/{mem_total_gb:.1f} GB ({mem_pct:.1f}%)", end='', flush=True)
                 
                 # Warning if memory getting tight
                 if mem_pct > 85:
-                    print(f"  ⚠️  High memory usage! Consider reducing --batch-size or --max-rows")
+                    print(f"\n  ⚠️  High memory usage! Consider reducing --batch-size or --max-rows")
                 
                 try:
-                    # Compute similarities for this batch
+                    # Compute similarities for this batch (vectorized)
                     batch_sims = embeddings_norm[i:batch_end] @ embeddings_norm.T
                     
-                    for batch_idx, doc_idx in enumerate(range(i, batch_end)):
-                        similarities = batch_sims[batch_idx]
+                    # Use vectorized operations for top-k selection
+                    if top_k:
+                        # Get top-k indices for entire batch at once (much faster!)
+                        top_k_indices = np.argpartition(batch_sims, -top_k-1, axis=1)[:, -top_k-1:]
+                        top_k_sims = np.take_along_axis(batch_sims, top_k_indices, axis=1)
                         
-                        # Get top-k most similar (excluding self)
-                        if top_k:
-                            sorted_indices = np.argsort(similarities)[::-1]
-                            # Skip self and take next top_k
-                            candidates = [idx for idx in sorted_indices[:top_k+10] if idx != doc_idx][:top_k]
-                        else:
-                            candidates = [idx for idx in range(n_docs) if idx != doc_idx]
+                        # Filter by threshold (vectorized)
+                        mask = top_k_sims >= similarity_threshold
                         
-                        for j in candidates:
-                            sim = float(similarities[j])
-                            if sim >= similarity_threshold:
+                        # Build edges from vectorized results
+                        for batch_idx, doc_idx in enumerate(range(i, batch_end)):
+                            valid_mask = mask[batch_idx] & (top_k_indices[batch_idx] != doc_idx)
+                            valid_targets = top_k_indices[batch_idx][valid_mask]
+                            valid_sims = top_k_sims[batch_idx][valid_mask]
+                            
+                            for j, sim in zip(valid_targets, valid_sims):
                                 edges.append({
                                     "source": doc_idx,
-                                    "target": j,
-                                    "similarity": sim
+                                    "target": int(j),
+                                    "similarity": float(sim)
                                 })
+                    else:
+                        # No top_k limit - use threshold only
+                        for batch_idx, doc_idx in enumerate(range(i, batch_end)):
+                            similarities = batch_sims[batch_idx]
+                            candidates = np.where((similarities >= similarity_threshold) & (np.arange(n_docs) != doc_idx))[0]
+                            
+                            for j in candidates:
+                                edges.append({
+                                    "source": doc_idx,
+                                    "target": int(j),
+                                    "similarity": float(similarities[j])
+                                })
+                    
+                    print(f" ✓ ({len(edges):,} edges so far)")
                     
                     # Clean up batch memory
                     del batch_sims

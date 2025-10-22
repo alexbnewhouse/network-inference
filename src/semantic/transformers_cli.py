@@ -53,6 +53,8 @@ Example:
                     help="Use FAISS for efficient similarity search (optional, unstable on Python 3.12+)")
     ap.add_argument("--batch-size", type=int, default=10000,
                     help="Batch size for similarity computation (default: 10000)")
+    ap.add_argument("--encode-batch-size", type=int, default=32,
+                    help="Batch size for encoding (default: 32, increase for GPU)")
     ap.add_argument("--mode", default="document", choices=["document", "term"],
                     help="Build document or term network")
     ap.add_argument("--text-col", default="text", help="Column name for text content (default: text)")
@@ -76,7 +78,8 @@ Example:
             similarity_threshold=args.similarity_threshold,
             top_k=args.top_k,
             use_faiss=args.use_faiss,
-            batch_size=args.batch_size
+            batch_size=args.batch_size,
+            encode_batch_size=args.encode_batch_size
         )
     else:
         # For term mode, need to extract vocabulary first

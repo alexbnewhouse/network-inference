@@ -6,6 +6,12 @@ Fast, scalable semantic networks, knowledge graphs, and actor networks from text
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Recent Updates (Oct 2025):** 
+> - **NEW: Complete Onboarding Training Package** 🎓
+>   - 60-90 minute hands-on tutorial with 10,000 synthetic posts
+>   - Learn both anonymized and actor-based analysis
+>   - Ethical decision-making and privacy techniques
+>   - Real-world Iron March case study included
+>   - See [ONBOARDING_TRAINING_GUIDE.md](ONBOARDING_TRAINING_GUIDE.md)
 > - **NEW: Complete Knowledge Graph Platform for Social Scientists**
 >   - Temporal analysis with event detection & trajectory classification
 >   - Enhanced sentiment: stance detection, framing analysis, temporal trends
@@ -22,10 +28,19 @@ Fast, scalable semantic networks, knowledge graphs, and actor networks from text
 
 **If you're a social scientist new to computational text analysis**, follow this path:
 
-1. **[GETTING_STARTED.md](GETTING_STARTED.md)** - Step-by-step beginner guide (zero to first network in 15 min)
-2. **[tutorials/01_hello_world.md](tutorials/01_hello_world.md)** - 5-minute hands-on tutorial with sample data
-3. **[KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md)** - Complete guide to knowledge graphs for research
-4. **[DATA_REQUIREMENTS.md](DATA_REQUIREMENTS.md)** - How to format your CSV files
+### 🎓 Complete Training Track (Recommended)
+1. **[ONBOARDING_TRAINING_GUIDE.md](ONBOARDING_TRAINING_GUIDE.md)** - **NEW!** 60-90 min hands-on tutorial with 10K synthetic dataset
+   - Part 1: Anonymized analysis (semantic networks, knowledge graphs, temporal)
+   - Part 2: Actor-based analysis (user networks, communities, influence)
+   - Part 3: Comparing approaches with decision matrix
+   - Part 4: Ethical best practices and anonymization techniques
+   - Includes real Iron March case study scenario
+
+### 📖 Documentation Path (Self-Paced)
+2. **[GETTING_STARTED.md](GETTING_STARTED.md)** - Step-by-step beginner guide (zero to first network in 15 min)
+3. **[tutorials/01_hello_world.md](tutorials/01_hello_world.md)** - 5-minute hands-on tutorial with sample data
+4. **[KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md)** - Complete guide to knowledge graphs for research
+5. **[DATA_REQUIREMENTS.md](DATA_REQUIREMENTS.md)** - How to format your CSV files
 
 **Already familiar with Python?** Jump to [Quick Start](#quick-start) below.
 

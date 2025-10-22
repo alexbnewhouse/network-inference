@@ -27,5 +27,16 @@ cupy-cuda12x; platform_system=="Linux" or platform_system=="Windows"
 # For NVIDIA GPU: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 # For Apple Silicon: pip install torch torchvision torchaudio
 # Then: pip install transformers accelerate
+
+# Optional: FAISS for efficient similarity search (recommended for >10K documents)
+# Uncomment for CPU-only version:
+# faiss-cpu>=1.7.4
+#
+# Or for GPU version (NVIDIA only):
+# faiss-gpu>=1.7.4
+#
+# Installation instructions:
+# For CPU: pip install faiss-cpu
+# For GPU: pip install faiss-gpu
 #
 # See GPU_SENTIMENT_GUIDE.md for detailed setup instructions

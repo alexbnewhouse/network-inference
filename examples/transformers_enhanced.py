@@ -187,20 +187,17 @@ class TransformerSemanticNetwork:
                 import faiss
                 print(f"Using FAISS for efficient similarity search ({n_docs:,} documents)...")
                 
-                # Make a copy to avoid modifying original
-                embeddings_faiss = embeddings.copy()
-                
                 # Normalize embeddings for cosine similarity
-                faiss.normalize_L2(embeddings_faiss)
+                faiss.normalize_L2(embeddings)
                 
                 # Build FAISS index
-                dimension = embeddings_faiss.shape[1]
+                dimension = embeddings.shape[1]
                 index = faiss.IndexFlatIP(dimension)  # Inner product = cosine similarity after normalization
-                index.add(embeddings_faiss.astype(np.float32))
+                index.add(embeddings.astype(np.float32))
                 
                 # Search for top-k similar documents
                 k = min(top_k + 1 if top_k else 100, n_docs)  # +1 to account for self
-                distances, indices = index.search(embeddings_faiss.astype(np.float32), k)
+                distances, indices = index.search(embeddings.astype(np.float32), k)
                 
                 print("Building edge list...")
                 edges = []
@@ -225,10 +222,6 @@ class TransformerSemanticNetwork:
             except ImportError:
                 print("⚠️  FAISS not available. Install with: pip install faiss-cpu or faiss-gpu")
                 print("Falling back to batch processing (slower)...")
-                use_faiss = False
-            except Exception as e:
-                print(f"⚠️  FAISS error: {e}")
-                print("Falling back to batch processing...")
                 use_faiss = False
         
         # For smaller datasets or if FAISS unavailable, use batch processing

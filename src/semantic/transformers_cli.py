@@ -49,6 +49,12 @@ Example:
                     help="Keep top-k most similar documents per document")
     ap.add_argument("--max-rows", type=int, default=None, help="Limit number of rows")
     ap.add_argument("--device", default="cpu", help="Device: cpu, cuda, or mps")
+    ap.add_argument("--use-faiss", action="store_true", default=True,
+                    help="Use FAISS for efficient similarity search (recommended for >10K docs)")
+    ap.add_argument("--no-faiss", dest="use_faiss", action="store_false",
+                    help="Disable FAISS and use standard computation")
+    ap.add_argument("--batch-size", type=int, default=10000,
+                    help="Batch size for similarity computation when not using FAISS")
     ap.add_argument("--mode", default="document", choices=["document", "term"],
                     help="Build document or term network")
     ap.add_argument("--text-col", default="text", help="Column name for text content (default: text)")
@@ -70,7 +76,9 @@ Example:
         edges_df = builder.build_document_network(
             texts,
             similarity_threshold=args.similarity_threshold,
-            top_k=args.top_k
+            top_k=args.top_k,
+            use_faiss=args.use_faiss,
+            batch_size=args.batch_size
         )
     else:
         # For term mode, need to extract vocabulary first

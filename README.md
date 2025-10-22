@@ -6,7 +6,12 @@ Fast, scalable semantic networks, knowledge graphs, and actor networks from text
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Recent Updates (Oct 2025):** 
-> - **NEW: GPU-Accelerated Transformer Sentiment Analysis** 🚀
+> - **NEW: Automatic Scaling for Large Datasets** 🚀
+>   - Transformer networks now process 1M+ documents automatically
+>   - Auto-selects best method: full matrix, FAISS, or batch processing
+>   - No configuration needed - just run your command!
+>   - See [SCALING_GUIDE.md](SCALING_GUIDE.md) and [TRANSFORMER_SCALING_UPDATE.md](TRANSFORMER_SCALING_UPDATE.md)
+> - **NEW: GPU-Accelerated Transformer Sentiment Analysis** 🤖
 >   - Contextual sentiment understanding (vs lexicon-based VADER)
 >   - Optimized for RTX 5090 and high-end GPUs
 >   - 85-90% accuracy on social media text (vs 75-80% VADER)
@@ -544,19 +549,26 @@ output/transformer/
 └── transformer_edges.csv   # source, target, similarity (cosine)
 ```
 
+**Note**: Transformer networks now **automatically scale** to large datasets:
+- **<10K docs**: Uses full similarity matrix (fastest)
+- **>10K docs**: Automatically uses FAISS for efficient search (requires `pip install faiss-cpu` or `faiss-gpu`)
+- **No FAISS**: Falls back to memory-efficient batch processing
+
+See [SCALING_GUIDE.md](SCALING_GUIDE.md) for processing 100K-1M+ documents.
+
 ## Performance Guide
 
 ### Dataset Size Recommendations
 
-| Documents | Method | Time | Memory | GPU? |
-|-----------|--------|------|--------|------|
-| <1K | Any | Seconds | <100MB | No |
-| 1K-10K | Semantic/KG | 1-5 min | <500MB | No |
-| 10K-100K | Semantic | 5-30 min | 1-4GB | Recommended |
-| 100K-1M | Semantic + GPU | 30-120 min | 4-16GB | Yes |
-| >1M | Semantic + GPU + chunking | Hours | 16GB+ | Yes |
+| Documents | Method | Time | Memory | GPU? | Notes |
+|-----------|--------|------|--------|------|-------|
+| <1K | Any | Seconds | <100MB | No | All methods work great |
+| 1K-10K | Semantic/KG/Transformer | 1-5 min | <500MB | No | Transformers use full matrix |
+| 10K-100K | Semantic/Transformer+FAISS | 5-30 min | 1-4GB | Recommended | Auto-switches to FAISS |
+| 100K-1M | Transformer+FAISS+GPU | 30-120 min | 4-16GB | Yes | Install faiss-gpu |
+| >1M | Transformer+FAISS+GPU | 1-3 hours | 16GB+ | Yes | See SCALING_GUIDE.md |
 
-**Transformers**: Recommended for <10K documents. For larger, use sampling or GPU.
+**Transformers**: Now scale to millions of documents with automatic FAISS optimization. Install with `pip install faiss-cpu` (or `faiss-gpu` for NVIDIA GPUs).
 
 ### Speed Optimization
 

@@ -2,6 +2,8 @@
 
 This toolkit now supports **transformer-based sentiment analysis** with GPU acceleration, in addition to the existing VADER lexicon-based approach.
 
+> **NEW**: Transformer networks now **automatically scale** to large datasets (see [SCALING_GUIDE.md](SCALING_GUIDE.md)). Process millions of documents efficiently with automatic FAISS optimization.
+
 ## Quick Comparison
 
 | Feature | VADER | Transformer |

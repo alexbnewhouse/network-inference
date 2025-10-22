@@ -130,6 +130,51 @@ python -m src.semantic.actor_cli \
 **Output files**: actor_edges.csv, actor_metrics.csv  
 **Pattern**: Looks for >>123 style replies
 
+### 9. Temporal Knowledge Graph Analysis ✨ NEW
+
+```bash
+# Track entity lifecycles across time periods
+python -m src.semantic.kg_temporal_cli \
+  --input output/kg_temporal \
+  --timeline \
+  --top-n 20
+```
+
+**Expected time**: <1 minute  
+**Output**: Entity persistence, events, trajectory patterns  
+**Use case**: Track how discourse about entities changes over time
+
+### 10. Enhanced Sentiment Analysis ✨ NEW
+
+```bash
+# Analyze stance and framing toward specific entities
+python -m src.semantic.kg_sentiment_enhanced_cli \
+  --input data.csv \
+  --text-col text \
+  --entity "Russia" \
+  --stance --framing
+```
+
+**Expected time**: <1 minute for 10K documents  
+**Output**: Pro/anti stance distribution, descriptive framing  
+**Use case**: Understand how entities are portrayed in discourse
+
+### 11. User-Entity Networks ✨ NEW
+
+```bash
+# Build bipartite networks of users and entities they mention
+python -m src.semantic.kg_user_entity_network_cli \
+  --kg-dir output/kg \
+  --data data.csv \
+  --user-col user_id \
+  --text-col text \
+  --stats
+```
+
+**Expected time**: <1 minute  
+**Output**: User communities, entity clusters, similarity networks  
+**Use case**: Find user communities based on shared entity interests
+
 ## Command Line Options Quick Reference
 
 ### build_semantic_network

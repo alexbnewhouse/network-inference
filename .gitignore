@@ -22,6 +22,7 @@ wheels/
 
 # Virtual environments
 .venv/
+.venv_*/
 venv/
 ENV/
 env/
@@ -43,10 +44,28 @@ env/
 # But include example data
 !examples/*.csv
 
+# Keep small sample data files (commented out so they're tracked)
+# These are intentionally small (<500KB) for testing
+# !pol_archive_5k.csv
+# !pol_archive_with_users.csv
+# !test_sentiment_data.csv
+
 # Output directories
 out/
 out_*/
+output/
 viz/
+
+# Temporary outputs in root
+kg_nodes.csv
+kg_edges.csv
+actor_*.csv
+*_edges.csv
+*_nodes.csv
+*.parquet
+
+# CI logs
+ci_log.txt
 
 # Jupyter
 .ipynb_checkpoints/

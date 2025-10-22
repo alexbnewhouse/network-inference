@@ -6,11 +6,14 @@ Fast, scalable semantic networks, knowledge graphs, and actor networks from text
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **📢 Recent Updates (Oct 2025):** 
+> - 🚀 **NEW: Complete Knowledge Graph Platform for Social Scientists**
+>   - ⏱️ Temporal analysis with event detection & trajectory classification
+>   - � Enhanced sentiment: stance detection, framing analysis, temporal trends
+>   - � User-entity networks with community detection
+>   - 📊 Auto-generated quality reports
+>   - � See [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md) for comprehensive guide
 > - ✨ All CLIs now support config files (JSON/YAML) via `--config`
 > - 📊 Multiple output formats: CSV, JSON, Parquet via `--output-format`
-> - 📚 Comprehensive Best Practices & Troubleshooting sections added
-> - 📓 New end-to-end workflow notebook in `examples/`
-> - 🛡️ Improved error messages with actionable suggestions
 > - See [CHANGELOG_USABILITY.md](CHANGELOG_USABILITY.md) for full details
 
 ## Quick Start
@@ -38,8 +41,13 @@ python -m src.semantic.build_semantic_network \
 | **Semantic Network** | Topic/concept relationships | Fast (1-10 min) | `build_semantic_network` |
 | **Transformer Network** | Deep semantic similarity | Medium (5-30 min) | `transformers_cli` |
 | **Knowledge Graph** | Entity relationships | Fast (1-5 min) | `kg_cli` |
+| **Temporal KG** ✨ | Discourse evolution, events | Medium (10-60 min) | `kg_cli` + `kg_temporal_cli` |
+| **Sentiment Analysis** ✨ | Stance, framing, trends | Fast (5-15 min) | `kg_sentiment_enhanced_cli` |
+| **User-Entity Networks** ✨ | Community detection | Fast (5-20 min) | `kg_user_entity_network_cli` |
 | **Actor Network** | Social/reply networks | Fast (<1 min) | `actor_cli` |
 | **Time-Sliced** | Network evolution | Medium (10-60 min) | `time_slice_cli` |
+
+✨ = **New in Oct 2025** - See [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md)
 
 ## Installation
 
@@ -246,6 +254,86 @@ python -m src.contagion.cli_inference output/semantic/edges.csv \
 **See [CONTAGION.md](CONTAGION.md) for full guide**
 
 </details>
+
+### 8. Advanced Knowledge Graph Analysis (NEW)
+
+**For social scientists**: Temporal analysis, sentiment, and user networks
+
+<details>
+<summary><b>Temporal KG: Track discourse evolution</b></summary>
+
+```bash
+# Generate weekly knowledge graphs with sentiment
+python -m src.semantic.kg_cli \
+  --input data.csv \
+  --outdir output/kg_temporal \
+  --text-col text \
+  --time-col created_at \
+  --group-by-time weekly \
+  --add-sentiment
+
+# Analyze entity timeline
+python -m src.semantic.kg_temporal_cli \
+  --kg-dir output/kg_temporal \
+  --entity "Russia" \
+  --report russia_timeline.md
+```
+
+**Features**:
+- Timeline tracking (first/last seen, persistence, peak periods)
+- Event detection (automatic spike identification)
+- Trajectory classification (emerging/declining/stable/episodic)
+- Period comparison (new/lost/growing entities)
+</details>
+
+<details>
+<summary><b>Enhanced Sentiment: Stance & framing analysis</b></summary>
+
+```bash
+# Detect stance (pro/anti/neutral)
+python -m src.semantic.kg_sentiment_enhanced_cli \
+  --input data.csv \
+  --text-col text \
+  --entity "Russia" \
+  --stance --framing --group-by board
+
+# Track sentiment over time
+python -m src.semantic.kg_sentiment_enhanced_cli \
+  --temporal output/kg_temporal \
+  --entity "Russia" \
+  --trends --shifts
+```
+
+**Features**:
+- Stance detection with pattern matching
+- Framing analysis (how entities are described)
+- Temporal sentiment tracking
+- Group comparison (boards, communities)
+- Shift detection (significant changes)
+</details>
+
+<details>
+<summary><b>User-Entity Networks: Community detection</b></summary>
+
+```bash
+# Build user-entity bipartite network
+python -m src.semantic.kg_user_entity_network_cli \
+  --kg-dir output/kg \
+  --data data.csv \
+  --user-col user_id \
+  --text-col text \
+  --stats --communities --export-all output/networks
+```
+
+**Features**:
+- Bipartite graphs (users ↔ entities)
+- User-user projection (by shared interests)
+- Entity-entity projection (by shared audiences)
+- Community detection (identify user clusters)
+- Similarity metrics (Jaccard, cosine, overlap)
+</details>
+
+**📖 Complete Guide**: [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md) - 10,000+ word guide with examples, case studies, and research design advice
 
 ## Working with Real Data
 

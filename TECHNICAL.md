@@ -527,6 +527,59 @@ model.gradient_checkpointing_enable()
 3. **Louvain Algorithm**: Blondel et al. (2008) "Fast unfolding of communities in large networks"
 4. **Sentence Transformers**: Reimers & Gurevych (2019) "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks"
 5. **Transformer NER**: Devlin et al. (2019) "BERT: Pre-training of Deep Bidirectional Transformers"
+6. **Stance Detection**: Mohammad et al. (2016) "SemEval-2016 Task 6: Detecting Stance in Tweets"
+7. **Bipartite Networks**: Newman (2003) "The structure and function of complex networks"
+
+### Advanced Features
+
+#### Temporal Knowledge Graphs
+
+The `TemporalKG` class provides temporal analysis of entity mentions:
+
+**Key algorithms**:
+- **Event detection**: Z-score spike analysis with moving average baseline
+- **Trajectory classification**: Linear regression + coefficient of variation
+- **Lifecycle tracking**: First/last appearance, persistence metrics
+
+**Implementation**: `src/semantic/kg_temporal.py`
+
+#### Enhanced Sentiment Analysis
+
+The sentiment module extends basic VADER with:
+
+**Stance Detection**:
+- Pattern-based anti/pro/neutral classification
+- Context window analysis (100 chars around entity)
+- Combined with sentiment polarity
+
+**Framing Analysis**:
+- spaCy dependency parsing for adjectives, verbs, compounds
+- Entity-specific linguistic patterns
+- Aggregated framing profiles
+
+**Implementation**: `src/semantic/kg_sentiment_enhanced.py`
+
+#### User-Entity Networks
+
+The `UserEntityNetwork` class builds bipartite graphs:
+
+**Projection algorithms**:
+- User-user projection: Connected by shared entities
+- Entity-entity projection: Connected by shared users
+- Configurable minimum thresholds
+
+**Similarity metrics**:
+- Jaccard: |A ∩ B| / |A ∪ B|
+- Cosine: A·B / (||A|| ||B||)
+- Overlap: |A ∩ B| / min(|A|, |B|)
+
+**Implementation**: `src/semantic/kg_user_entity_network.py`
+
+For detailed usage examples, see:
+- [TEMPORAL_KG_COMPLETE.md](TEMPORAL_KG_COMPLETE.md)
+- [ENHANCED_SENTIMENT_COMPLETE.md](ENHANCED_SENTIMENT_COMPLETE.md)
+- [USER_ENTITY_NETWORKS_COMPLETE.md](USER_ENTITY_NETWORKS_COMPLETE.md)
+- [KG_FOR_SOCIAL_SCIENTISTS.md](KG_FOR_SOCIAL_SCIENTISTS.md)
 
 ### Software Documentation
 

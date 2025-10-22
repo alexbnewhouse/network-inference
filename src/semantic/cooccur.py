@@ -31,16 +31,15 @@ def compute_ppmi_gpu(coo, token_counts, total_tokens, cds=0.75, eps=1e-12):
     Z = sm_counts.sum() + eps
     total_co = coo.data.sum() + eps
     pi = sm_counts / Z
-    data = []
-    for idx in range(len(coo.data)):
-        i, j = coo.row[idx], coo.col[idx]
-        cij = coo.data[idx]
-        pij = cij / total_co
-        denom = pi[i] * pi[j] + eps
-        val = cp.log2(cp.maximum(pij / denom, eps))
-        data.append(val if val > 0 else 0.0)
-    data = cp.array(data, dtype=cp.float32)
-    data[data < 0] = 0.0
+    
+    # Vectorized computation instead of loop
+    pij = coo.data / total_co
+    denom = pi[coo.row] * pi[coo.col] + eps
+    data = cp.log2(cp.maximum(pij / denom, eps))
+    
+    # Clip negative values to 0
+    data = cp.maximum(data, 0.0).astype(cp.float32)
+    
     return type(coo)((data, (coo.row, coo.col)), shape=coo.shape)
 
 def build_vocab(tokenized_docs: Iterable[List[str]], min_df: int = 5, max_vocab: int | None = None) -> Dict[str, int]:

@@ -2,6 +2,13 @@
 
 This guide demonstrates how to use the actual `pol_archive_0.csv` dataset with all the network inference tools.
 
+> **📖 For comprehensive 4chan analysis guide**, see **[CHAN_QUICKSTART.md](CHAN_QUICKSTART.md)** which includes:
+> - Complete workflow examples
+> - Board-level comparisons  
+> - Entity evolution tracking
+> - Temporal analysis
+> - Ethics and privacy best practices
+
 ## Dataset Structure
 
 The `pol_archive_0.csv` file contains:

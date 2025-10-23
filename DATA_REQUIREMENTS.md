@@ -119,12 +119,14 @@ text,created_at,user_id,board,subject
 
 ### 4chan/8chan
 ```csv
-text,created_at,user_id,board,subject
+body,created_at,tripcode,board,thread_id
 ```
 - Use `body` for text content
 - `tripcode` for user identification (can be null/anonymous)
-- `subject` for thread grouping
-- `board` for community (e.g., "/pol/", "/int/")
+- `thread_id` for thread grouping
+- `board` for community (e.g., "pol", "int")
+
+> **📖 Complete 4chan Guide**: See **[CHAN_QUICKSTART.md](CHAN_QUICKSTART.md)** for comprehensive 4chan data analysis workflows
 
 ### Reddit
 ```csv

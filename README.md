@@ -522,6 +522,13 @@ See **[REAL_DATA_USAGE.md](REAL_DATA_USAGE.md)** for:
 - Survey data formatting
 - News article formatting
 
+**📖 4chan-Specific Guide**: See **[CHAN_QUICKSTART.md](CHAN_QUICKSTART.md)** for a comprehensive guide to analyzing 4chan data, including:
+- Complete workflow examples
+- Board-level comparisons
+- Entity evolution tracking
+- Temporal analysis for ephemeral data
+- Ethics and privacy best practices
+
 ## Output Files
 
 All pipelines generate standard output files:

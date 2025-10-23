@@ -29,6 +29,47 @@ def print_section(title):
     print("=" * 70)
 
 
+def get_edge_columns(edges_df):
+    """
+    Detect edge column names and return standardized tuple.
+    
+    Returns:
+        tuple: (src_col, dst_col, weight_col)
+    """
+    if 'similarity' in edges_df.columns:
+        return ('source', 'target', 'similarity')
+    else:
+        return ('src', 'dst', 'weight')
+
+
+def get_entity_type_column(nodes_df):
+    """
+    Detect entity type column name.
+    
+    Returns:
+        str: Column name for entity type ('entity_type' or 'type')
+    """
+    return 'entity_type' if 'entity_type' in nodes_df.columns else 'type'
+
+
+def format_table_markdown(df):
+    """
+    Format DataFrame as markdown table.
+    
+    Args:
+        df: DataFrame to format
+        
+    Returns:
+        str: Markdown table string
+    """
+    lines = []
+    lines.append("| " + " | ".join(df.columns) + " |")
+    lines.append("| " + " | ".join(["---"] * len(df.columns)) + " |")
+    for _, row in df.iterrows():
+        lines.append("| " + " | ".join(str(row[col]) for col in df.columns) + " |")
+    return "\n".join(lines)
+
+
 def run_command(cmd, description):
     """Run a shell command and print status."""
     print(f"\n▶ {description}...")
@@ -105,13 +146,8 @@ def analyze_4chan_data(input_file, output_dir):
         print(f"\n  Network statistics:")
         print(f"    Edges: {len(edges)}")
         print(f"    Top connections:")
-        # Handle different column naming conventions
-        if 'similarity' in edges.columns:
-            cols = ['source', 'target', 'similarity']
-            weight_col = 'similarity'
-        else:
-            cols = ['src', 'dst', 'weight']
-            weight_col = 'weight'
+        src_col, dst_col, weight_col = get_edge_columns(edges)
+        cols = [src_col, dst_col, weight_col]
         print(edges.nlargest(5, weight_col)[cols].to_string(index=False))
     
     # Step 2: Knowledge Graph
@@ -131,8 +167,7 @@ def analyze_4chan_data(input_file, output_dir):
         print(f"\n  Entity statistics:")
         print(f"    Total entities: {len(nodes)}")
         
-        # Handle different column naming conventions
-        type_col = 'entity_type' if 'entity_type' in nodes.columns else 'type'
+        type_col = get_entity_type_column(nodes)
         
         if type_col in nodes.columns:
             print(f"    By type:")
@@ -238,7 +273,7 @@ def analyze_4chan_data(input_file, output_dir):
             
             if success and (board_dir / "kg_nodes.csv").exists():
                 nodes = pd.read_csv(board_dir / "kg_nodes.csv")
-                type_col = 'entity_type' if 'entity_type' in nodes.columns else 'type'
+                type_col = get_entity_type_column(nodes)
                 board_stats.append({
                     'board': board,
                     'posts': len(df_board),
@@ -277,13 +312,7 @@ def analyze_4chan_data(input_file, output_dir):
             f.write(f"- **Location:** `{semantic_dir.relative_to(output_path)}/`\n")
             f.write(f"- **Edges:** {len(edges)}\n")
             f.write(f"- **Top connections:**\n\n")
-            # Handle different column naming conventions
-            if 'similarity' in edges.columns:
-                weight_col = 'similarity'
-                src_col, dst_col = 'source', 'target'
-            else:
-                weight_col = 'weight'
-                src_col, dst_col = 'src', 'dst'
+            src_col, dst_col, weight_col = get_edge_columns(edges)
             top_edges = edges.nlargest(10, weight_col)
             for _, row in top_edges.iterrows():
                 f.write(f"  - {row[src_col]} ↔ {row[dst_col]} ({weight_col}: {row[weight_col]:.2f})\n")
@@ -294,8 +323,7 @@ def analyze_4chan_data(input_file, output_dir):
             f.write(f"- **Location:** `{kg_dir.relative_to(output_path)}/`\n")
             f.write(f"- **Entities:** {len(nodes)}\n")
             f.write(f"- **Top entities:**\n\n")
-            # Handle different column naming conventions
-            type_col = 'entity_type' if 'entity_type' in nodes.columns else 'type'
+            type_col = get_entity_type_column(nodes)
             top_entities = nodes.nlargest(15, 'frequency')
             for _, row in top_entities.iterrows():
                 etype = row.get(type_col, 'UNKNOWN')
@@ -304,11 +332,7 @@ def analyze_4chan_data(input_file, output_dir):
         if board_stats:
             f.write(f"\n### Board Comparison\n\n")
             df_stats = pd.DataFrame(board_stats)
-            # Write as simple table
-            f.write("| " + " | ".join(df_stats.columns) + " |\n")
-            f.write("| " + " | ".join(["---"] * len(df_stats.columns)) + " |\n")
-            for _, row in df_stats.iterrows():
-                f.write("| " + " | ".join(str(row[col]) for col in df_stats.columns) + " |\n")
+            f.write(format_table_markdown(df_stats) + "\n")
         
         f.write(f"\n\n## Files Generated\n\n")
         f.write(f"- Semantic network: `{semantic_dir.relative_to(output_path)}/`\n")
